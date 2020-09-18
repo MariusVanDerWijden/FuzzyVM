@@ -17,7 +17,62 @@
 // Package fuzzer is the entry point for go-fuzz.
 package fuzzer
 
+import (
+	"encoding/binary"
+	"encoding/json"
+	"fmt"
+	"math/rand"
+	"os"
+	"time"
+
+	"github.com/holiman/goevmlab/fuzzing"
+
+	"github.com/MariusVanDerWijden/FuzzyVM/generator"
+)
+
+var outputDir = "../out"
+
 // Fuzz is the entry point for go-fuzz
 func Fuzz(data []byte) int {
+	testMaker := generator.GenerateProgram(data)
+	name := randTestName(data)
+	// Execute the test and write out the resulting trace
+	traceFile := setupTrace(name)
+	defer traceFile.Close()
+	testMaker.Fill(traceFile)
+	// Save the test
+	test := testMaker.ToGeneralStateTest(name)
+	storeTest(test, name)
 	return 0
+}
+
+func setupTrace(name string) *os.File {
+	traceFile, err := os.OpenFile(fmt.Sprintf("./%v-trace.jsonl", name), os.O_CREATE|os.O_RDWR, 0755)
+	if err != nil {
+		panic("Could not write out trace file")
+	}
+	return traceFile
+}
+
+// storeTest saves a testcase to disk
+func storeTest(test *fuzzing.GeneralStateTest, testName string) {
+	path := fmt.Sprintf("%v/%v.json", outputDir, testName)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
+	if err != nil {
+		panic("Could not open test file")
+	}
+	defer f.Close()
+	// Write to file
+	encoder := json.NewEncoder(f)
+	if err = encoder.Encode(test); err != nil {
+		panic("Could not encode state test")
+	}
+}
+
+func randTestName(data []byte) string {
+	var seedData [8]byte
+	copy(seedData[:], data)
+	seed := int64(binary.BigEndian.Uint64(seedData[:]))
+	rand := rand.New(rand.NewSource(time.Now().UnixNano() ^ seed))
+	return fmt.Sprintf("FuzzyVM-%v-%v", rand.Int31(), rand.Int31())
 }
