@@ -17,7 +17,6 @@
 // Package generator provides means to generate state tests for Ethereum.
 package generator
 
-// Fuzz is the entry point for go-fuzz
-func Fuzz(data []byte) int {
-	return 0
+func GenerateProgram(data []byte) []byte {
+	return []byte{}
 }
