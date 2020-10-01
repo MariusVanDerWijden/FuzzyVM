@@ -39,7 +39,9 @@ func Fuzz(data []byte) int {
 	// Execute the test and write out the resulting trace
 	traceFile := setupTrace(name)
 	defer traceFile.Close()
-	testMaker.Fill(traceFile)
+	if err := testMaker.Fill(traceFile); err != nil {
+		panic(err)
+	}
 	// Save the test
 	test := testMaker.ToGeneralStateTest(name)
 	storeTest(test, name)
@@ -47,7 +49,8 @@ func Fuzz(data []byte) int {
 }
 
 func setupTrace(name string) *os.File {
-	traceFile, err := os.OpenFile(fmt.Sprintf("./%v-trace.jsonl", name), os.O_CREATE|os.O_RDWR, 0755)
+	path := fmt.Sprintf("%v/%v-trace.jsonl", outputDir, name)
+	traceFile, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
 	if err != nil {
 		panic("Could not write out trace file")
 	}
@@ -59,13 +62,13 @@ func storeTest(test *fuzzing.GeneralStateTest, testName string) {
 	path := fmt.Sprintf("%v/%v.json", outputDir, testName)
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
 	if err != nil {
-		panic("Could not open test file")
+		panic(fmt.Sprintf("Could not open test file: %v", err))
 	}
 	defer f.Close()
 	// Write to file
 	encoder := json.NewEncoder(f)
 	if err = encoder.Encode(test); err != nil {
-		panic("Could not encode state test")
+		panic(fmt.Sprintf("Could not encode state test: %v", err))
 	}
 }
 

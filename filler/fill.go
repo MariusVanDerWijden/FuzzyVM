@@ -29,7 +29,7 @@ type Filler struct {
 // NewFiller creates a new Filler.
 func NewFiller(data []byte) *Filler {
 	if len(data) == 0 {
-		return nil
+		data = make([]byte, 1)
 	}
 	return &Filler{
 		data:    data,

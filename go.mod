@@ -8,3 +8,4 @@ require (
 )
 
 replace github.com/MariusVanDerWijden/FuzzyVM/filler => ./filler
+replace github.com/holiman/goevmlab => /home/matematik/ethereum/goevmlab
