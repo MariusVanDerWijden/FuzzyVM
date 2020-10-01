@@ -27,6 +27,7 @@ import (
 
 	"github.com/holiman/goevmlab/fuzzing"
 
+	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
 )
 
@@ -34,7 +35,8 @@ var outputDir = "out"
 
 // Fuzz is the entry point for go-fuzz
 func Fuzz(data []byte) int {
-	testMaker, _ := generator.GenerateProgram(data)
+	f := filler.NewFiller(data)
+	testMaker, _ := generator.GenerateProgram(f)
 	name := randTestName(data)
 	// Execute the test and write out the resulting trace
 	traceFile := setupTrace(name)
@@ -45,6 +47,9 @@ func Fuzz(data []byte) int {
 	// Save the test
 	test := testMaker.ToGeneralStateTest(name)
 	storeTest(test, name)
+	if f.UsedUp() {
+		return -1
+	}
 	return 0
 }
 

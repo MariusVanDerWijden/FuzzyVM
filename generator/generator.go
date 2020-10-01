@@ -34,9 +34,8 @@ var sk = hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b1
 
 // GenerateProgram creates a new evm program and returns
 // a gstMaker based on it as well as its program code.
-func GenerateProgram(data []byte) (*fuzzing.GstMaker, []byte) {
+func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 	var (
-		f        = filler.NewFiller(data)
 		p        = program.NewProgram()
 		jumpdest = uint64(0)
 	)
@@ -114,7 +113,8 @@ func GenerateProgram(data []byte) (*fuzzing.GstMaker, []byte) {
 			var (
 				seedLen   = f.Uint32()
 				seed      = f.ByteSlice(int(seedLen))
-				_, code   = GenerateProgram(seed)
+				newFiller = filler.NewFiller(seed)
+				_, code   = GenerateProgram(newFiller)
 				isCreate2 = f.Bool()
 				callOp    = ops.OpCode(f.Byte())
 			)
