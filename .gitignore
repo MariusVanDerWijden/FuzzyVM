@@ -3,3 +3,8 @@ fuzzer/corpus
 fuzzer/crashers
 fuzzer/suppressions
 fuzzer/fuzzer-fuzz.zip
+corpus
+crashers
+crashes/*
+suppressions
+main
