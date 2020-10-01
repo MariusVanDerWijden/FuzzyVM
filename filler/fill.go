@@ -47,6 +47,12 @@ func (f *Filler) incPointer(i int) {
 	f.pointer = (f.pointer + i) % len(f.data)
 }
 
+// Bool returns a new bool.
+func (f *Filler) Bool() bool {
+	b := f.Byte()
+	return b > 127
+}
+
 // Byte returns a new byte.
 func (f *Filler) Byte() byte {
 	b := f.data[f.pointer]
