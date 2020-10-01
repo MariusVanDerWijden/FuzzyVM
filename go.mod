@@ -2,7 +2,9 @@ module github.com/MariusVanDerWijden/FuzzyVM
 
 go 1.15
 
+require (
+	github.com/ethereum/go-ethereum v1.9.22
+	github.com/holiman/goevmlab v0.0.0-20200925112252-8249743488ae
+)
 
-require github.com/holiman/goevmlab v0.0.0-20200901124102-88c62a456d5b // indirect
-
-replace github.com/holiman/goevmlab/fuzzing => /home/matematik/ethereum/github.com/holiman/goevmlab/fuzzing
+replace github.com/MariusVanDerWijden/FuzzyVM/filler => ./filler
