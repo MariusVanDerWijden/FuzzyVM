@@ -20,11 +20,14 @@ package executor
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/holiman/goevmlab/evms"
+	"github.com/korovkin/limiter"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -32,64 +35,119 @@ var (
 		evms.NewGethEVM("/home/matematik/go/src/github.com/ethereum/go-ethereum/build/bin/evm"),
 		evms.NewParityVM("/home/matematik/ethereum/openethereum/target/release/openethereum-evm"),
 		evms.NewNethermindVM("/home/matematik/ethereum/nethermind/nethtest"),
-		//evms.NewBesuVM("/home/matematik/ethereum/besu/ethereum/evmtool/build/install/evmtool/bin/evm"),
+		evms.NewBesuVM("/home/matematik/ethereum/besu/ethereum/evmtool/build/install/evmtool/bin/evm"),
 	}
 )
 
-func Execute(dirName string) error {
+func Execute(dirName, outDir string) error {
 	infos, err := ioutil.ReadDir(dirName)
 	if err != nil {
 		return err
 	}
-	for _, info := range infos {
+	errChan := make(chan error)
+	limit := limiter.NewConcurrencyLimiter(10)
+
+	for i, info := range infos {
 		// All generated tests end in .json
 		if strings.HasSuffix(info.Name(), ".json") {
-			var (
-				testFile  = info.Name()
-				testName  = strings.TrimRight(testFile, ".json")
-				traceName = fmt.Sprintf("%v-trace.jsonl")
-			)
-			outputs := executeTest(testFile)
-			if !verify(traceName, outputs) {
-				if err := dump(testName, vms, outputs); err != nil {
-					return err
+			fmt.Printf("Executing test: %v of %v \n", i/2, len(infos)/2)
+			job := func() {
+				if err := executeFullTest(dirName, outDir, info); err != nil {
+					err := errors.Wrap(err, fmt.Sprintf("in file: %v", info.Name()))
+					fmt.Println(err)
+					errChan <- err
 				}
 			}
+			limit.Execute(job)
+		}
+	}
+	limit.Wait()
+	for {
+		select {
+		case err := <-errChan:
+			fmt.Println(err)
+		default:
+			return nil
 		}
 	}
 	// All tests sucessfully executed
 	return nil
 }
 
-// executeTest executes a state test
-func executeTest(testName string) []bytes.Buffer {
-	buf := make([]bytes.Buffer, len(vms))
-	for i, vm := range vms {
-		vm.RunStateTest(testName, &buf[i], false)
-	}
-	return buf
-}
-
-// verify checks if the traces match the default trace.
-func verify(traceName string, outputs []bytes.Buffer) bool {
-	ref, err := ioutil.ReadFile(traceName)
+func executeFullTest(dirName, outDir string, info os.FileInfo) error {
+	var (
+		testFile  = fmt.Sprintf("%v/%v", dirName, info.Name())
+		testName  = strings.TrimRight(info.Name(), ".json")
+		traceFile = fmt.Sprintf("%v/%v-trace.jsonl", dirName, testName)
+	)
+	outputs, err := executeTest(testFile)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	for _, out := range outputs {
-		if !bytes.Equal(ref, out.Bytes()) {
-			return false
+	if !verify(traceFile, outputs) {
+		if err := dump(testName, outDir, vms, outputs); err != nil {
+			return err
 		}
-	}
-	return true
-}
-
-// dump writes outputs to a file in case of a verification problem
-func dump(filename string, vms []evms.Evm, outputs []bytes.Buffer) error {
-	for i, out := range outputs {
-		filename := fmt.Sprintf("%v-%v-trace.jsonl", filename, vms[i].Name())
-		if err := ioutil.WriteFile(filename, out.Bytes(), os.ModeAppend); err != nil {
+	} else {
+		if err := purge(testFile, traceFile); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+// executeTest executes a state test
+func executeTest(testName string) ([]*bytes.Buffer, error) {
+	var buf []*bytes.Buffer
+	for _, vm := range vms {
+		var buffer bytes.Buffer
+		if _, err := vm.RunStateTest(testName, &buffer, false); err != nil {
+			return nil, err
+		}
+		buf = append(buf, &buffer)
+	}
+	return buf, nil
+}
+
+// verify checks if the traces match the default trace.
+func verify(traceName string, outputs []*bytes.Buffer) bool {
+	var ioReaders []io.Reader
+	for _, out := range outputs {
+		ioReaders = append(ioReaders, out)
+	}
+	// Add the standard trace to the test (currently deactivated)
+	/*
+		ref, err := ioutil.ReadFile(traceName)
+		if err != nil {
+			return false
+		}
+		ioReaders = append(ioReaders, bytes.NewBuffer(ref))
+	*/
+	return evms.CompareFiles(vms, ioReaders)
+}
+
+// dump writes outputs to a file in case of a verification problem
+func dump(filename, outdir string, vms []evms.Evm, outputs []*bytes.Buffer) error {
+	for i, out := range outputs {
+		filename := fmt.Sprintf("%v/%v-%v-trace.jsonl", outdir, filename, vms[i].Name())
+		f, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
+		if err != nil {
+			return err
+		}
+		if _, err := f.Write(out.Bytes()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// purge deletes a test file and its corresponding trace
+func purge(filename, tracename string) error {
+	if err := os.Remove(tracename); err != nil {
+		return err
+	}
+	if err := os.Remove(filename); err != nil {
+		return err
+	}
+	return nil
 }
