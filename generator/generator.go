@@ -47,7 +47,13 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 		switch rnd % 25 {
 		case 0:
 			// Just add a single opcode
-			p.Op(ops.OpCode(f.Byte()))
+			op := ops.OpCode(f.Byte())
+			// Nethermind currently uses a different blockhash provider in the statetests,
+			// so ignore the blockhash operator to reduce false positives.
+			// see: https://gist.github.com/MariusVanDerWijden/97fe9eb1aac074f7ccf6aef169aaadaa
+			if op != ops.BLOCKHASH {
+				p.Op(op)
+			}
 		case 1:
 			// Set a jumpdest
 			jumpdest = p.Jumpdest()
@@ -132,8 +138,10 @@ func createGstMaker(fill *filler.Filler, code []byte) *fuzzing.GstMaker {
 	gst.EnableFork(fork)
 	// Add sender
 	gst.AddAccount(sender, fuzzing.GenesisAccount{
-		Nonce:   0,
-		Balance: big.NewInt(0xffffffff),
+		Nonce: 0,
+		// Used to be 0xffffffff, increased to prevent sender to little money exceptions
+		// see: https://gist.github.com/MariusVanDerWijden/008b91a61de4b0fb831b72c24600ef59
+		Balance: big.NewInt(0xffffffffffffff),
 		Storage: make(map[common.Hash]common.Hash),
 		Code:    []byte{},
 	})

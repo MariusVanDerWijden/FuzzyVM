@@ -61,17 +61,15 @@ func Execute(dirName, outDir string) error {
 			limit.Execute(job)
 		}
 	}
-	limit.Wait()
 	for {
 		select {
 		case err := <-errChan:
 			fmt.Println(err)
 		default:
+			// All tests sucessfully executed
 			return nil
 		}
 	}
-	// All tests sucessfully executed
-	return nil
 }
 
 func executeFullTest(dirName, outDir string, info os.FileInfo) error {
@@ -85,6 +83,7 @@ func executeFullTest(dirName, outDir string, info os.FileInfo) error {
 		return err
 	}
 	if !verify(traceFile, outputs) {
+		fmt.Printf("Test %v failed, dumping\n", testName)
 		if err := dump(testName, outDir, vms, outputs); err != nil {
 			return err
 		}
