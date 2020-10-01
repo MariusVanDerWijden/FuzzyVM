@@ -32,6 +32,8 @@ var fork string
 var sender = common.HexToAddress("a94f5374fce5edbc8e2a8697c15331677e6ebf0b")
 var sk = hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
 
+// GenerateProgram creates a new evm program and returns
+// a gstMaker based on it as well as its program code.
 func GenerateProgram(data []byte) (*fuzzing.GstMaker, []byte) {
 	var (
 		f        = filler.NewFiller(data)
