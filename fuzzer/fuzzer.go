@@ -34,7 +34,7 @@ var outputDir = "../out"
 
 // Fuzz is the entry point for go-fuzz
 func Fuzz(data []byte) int {
-	testMaker := generator.GenerateProgram(data)
+	testMaker, _ := generator.GenerateProgram(data)
 	name := randTestName(data)
 	// Execute the test and write out the resulting trace
 	traceFile := setupTrace(name)
