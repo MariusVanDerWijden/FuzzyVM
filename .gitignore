@@ -1,0 +1,4 @@
+out/*
+fuzzer/corpus
+fuzzer/crashers
+fuzzer/suppressions
