@@ -30,7 +30,7 @@ import (
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
 )
 
-var outputDir = "../out"
+var outputDir = "out"
 
 // Fuzz is the entry point for go-fuzz
 func Fuzz(data []byte) int {
