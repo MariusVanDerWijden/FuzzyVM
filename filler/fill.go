@@ -17,7 +17,10 @@
 // Package filler can fill objects based on a provided data source.
 package filler
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"math/big"
+)
 
 // Filler can be used to fill objects from a data source.
 type Filler struct {
@@ -58,6 +61,21 @@ func (f *Filler) Byte() byte {
 	b := f.data[f.pointer]
 	f.incPointer(1)
 	return b
+}
+
+// Read implements the io.Reader interface.
+func (f *Filler) Read(b []byte) (n int, err error) {
+	// TODO (MariusVanDerWijden) this can be done more efficiently
+	for i := 0; i < len(b); i++ {
+		b[i] = f.Byte()
+	}
+	return len(b), nil
+}
+
+// BigInt returns a new big int in [0, 2^32)
+func (f *Filler) BigInt() *big.Int {
+	i := f.Uint32()
+	return big.NewInt(int64(i))
 }
 
 // ByteSlice returns a byteslice with `items` values.

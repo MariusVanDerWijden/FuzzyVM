@@ -126,7 +126,23 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			)
 			p.CreateAndCall(code, isCreate2, callOp)
 		case 14:
-
+			var (
+				gas       = f.BigInt()
+				address   = common.BytesToAddress(f.ByteSlice(20))
+				value     = f.BigInt()
+				inOffset  = f.Uint32()
+				inSize    = f.Uint32()
+				outOffset = f.Uint32()
+				outSize   = f.Uint32()
+			)
+			switch f.Byte() % 3 {
+			case 0:
+				p.Call(gas, address, value, inOffset, inSize, outOffset, outSize)
+			case 1:
+				p.CallCode(gas, address, value, inOffset, inSize, outOffset, outSize)
+			case 2:
+				p.StaticCall(gas, address, inOffset, inSize, outOffset, outSize)
+			}
 		}
 	}
 	code := p.Bytecode()
