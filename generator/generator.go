@@ -126,27 +126,41 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			)
 			p.CreateAndCall(code, isCreate2, callOp)
 		case 14:
-			var (
-				gas       = f.BigInt()
-				address   = common.BytesToAddress(f.ByteSlice(20))
-				value     = f.BigInt()
-				inOffset  = f.Uint32()
-				inSize    = f.Uint32()
-				outOffset = f.Uint32()
-				outSize   = f.Uint32()
-			)
-			switch f.Byte() % 3 {
-			case 0:
-				p.Call(gas, address, value, inOffset, inSize, outOffset, outSize)
-			case 1:
-				p.CallCode(gas, address, value, inOffset, inSize, outOffset, outSize)
-			case 2:
-				p.StaticCall(gas, address, inOffset, inSize, outOffset, outSize)
+			c := callObj{
+				gas:       f.BigInt(),
+				address:   common.BytesToAddress(f.ByteSlice(20)),
+				value:     f.BigInt(),
+				inOffset:  f.Uint32(),
+				inSize:    f.Uint32(),
+				outOffset: f.Uint32(),
+				outSize:   f.Uint32(),
 			}
+			callRandomizer(p, f, c)
 		}
 	}
 	code := p.Bytecode()
 	return createGstMaker(f, code), code
+}
+
+type callObj struct {
+	gas       *big.Int
+	address   common.Address
+	value     *big.Int
+	inOffset  uint32
+	inSize    uint32
+	outOffset uint32
+	outSize   uint32
+}
+
+func callRandomizer(p *program.Program, f *filler.Filler, c callObj) {
+	switch f.Byte() % 3 {
+	case 0:
+		p.Call(c.gas, c.address, c.value, c.inOffset, c.inSize, c.outOffset, c.outSize)
+	case 1:
+		p.CallCode(c.gas, c.address, c.value, c.inOffset, c.inSize, c.outOffset, c.outSize)
+	case 2:
+		p.StaticCall(c.gas, c.address, c.inOffset, c.inSize, c.outOffset, c.outSize)
+	}
 }
 
 func createGstMaker(fill *filler.Filler, code []byte) *fuzzing.GstMaker {
