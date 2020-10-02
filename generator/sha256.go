@@ -27,7 +27,7 @@ var sha256Addr = common.HexToAddress("0x2")
 type sha256Caller struct{}
 
 func (*sha256Caller) call(p *program.Program, f *filler.Filler) error {
-	data := f.ByteSlice(int(f.Uint32()))
+	data := f.ByteSlice256()
 	c := callObj{
 		gas:       f.BigInt(),
 		address:   sha256Addr,
@@ -37,7 +37,7 @@ func (*sha256Caller) call(p *program.Program, f *filler.Filler) error {
 		outSize:   32,
 		value:     f.BigInt(),
 	}
-	p.Push(data)
+	p.Mstore(data, 0)
 	callRandomizer(p, f, c)
 	return nil
 }

@@ -153,7 +153,7 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 		case 15:
 			// call a precompile
 			var (
-				idx  = int(f.Byte()) & len(precompiles)
+				idx  = int(f.Byte()) % len(precompiles)
 				prec = precompiles[idx]
 			)
 			if err := prec.call(p, f); err != nil {

@@ -30,11 +30,11 @@ var ecdsaAddr = common.HexToAddress("0x1")
 type ecdsaCaller struct{}
 
 func (*ecdsaCaller) call(p *program.Program, f *filler.Filler) error {
-	sk, err := ecdsa.GenerateKey(crypto.S256().Params(), f)
+	sk, err := ecdsa.GenerateKey(crypto.S256(), f)
 	if err != nil {
 		return err
 	}
-	sig, err := crypto.Sign(f.ByteSlice256(), sk)
+	sig, err := crypto.Sign(f.ByteSlice(32), sk)
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func (*ecdsaCaller) call(p *program.Program, f *filler.Filler) error {
 		outSize:   20,
 		value:     f.BigInt(),
 	}
-	p.Push(sig)
+	p.Mstore(sig, 0)
 	callRandomizer(p, f, c)
 	return nil
 }

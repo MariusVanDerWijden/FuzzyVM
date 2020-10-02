@@ -52,7 +52,7 @@ func Execute(dirName, outDir string) error {
 		if strings.HasSuffix(info.Name(), ".json") {
 			fmt.Printf("Executing test: %v of %v \n", i/2, len(infos)/2)
 			job := func() {
-				if err := executeFullTest(dirName, outDir, info); err != nil {
+				if err := executeFullTest(dirName, outDir, info.Name()); err != nil {
 					err := errors.Wrap(err, fmt.Sprintf("in file: %v", info.Name()))
 					fmt.Println(err)
 					errChan <- err
@@ -72,10 +72,10 @@ func Execute(dirName, outDir string) error {
 	}
 }
 
-func executeFullTest(dirName, outDir string, info os.FileInfo) error {
+func executeFullTest(dirName, outDir, filename string) error {
 	var (
-		testFile  = fmt.Sprintf("%v/%v", dirName, info.Name())
-		testName  = strings.TrimRight(info.Name(), ".json")
+		testFile  = fmt.Sprintf("%v/%v", dirName, filename)
+		testName  = strings.TrimRight(filename, ".json")
 		traceFile = fmt.Sprintf("%v/%v-trace.jsonl", dirName, testName)
 	)
 	outputs, err := executeTest(testFile)

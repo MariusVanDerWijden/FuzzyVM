@@ -14,21 +14,17 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the fuzzy-vm library. If not, see <http://www.gnu.org/licenses/>.
 
-package executor
+package generator
 
-import "testing"
+import (
+	"testing"
 
-func TestExecute(t *testing.T) {
-	err := Execute("../out", "../crashes")
-	if err != nil {
-		t.Fail()
-	}
-}
+	"github.com/MariusVanDerWijden/FuzzyVM/filler"
+)
 
-func TestExecuteFullTest(t *testing.T) {
-	file := "FuzzyVM-1029641488-461617836.json"
-	err := executeFullTest("../out", "../crashes", file)
-	if err != nil {
-		t.Error(err)
-	}
+func TestGenerator(t *testing.T) {
+	inputEscaped := "0\xa5"
+	input := []byte(inputEscaped)
+	filler := filler.NewFiller(input)
+	GenerateProgram(filler)
 }

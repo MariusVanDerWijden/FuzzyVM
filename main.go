@@ -27,11 +27,12 @@ import (
 	"github.com/MariusVanDerWijden/FuzzyVM/executor"
 )
 
-var maxTests = 100000
+var maxTests = 10000
 var minTests = 1000
 
 func main() {
 	for {
+		fmt.Println("Starting generator")
 		errChan := make(chan error)
 		cmd := startGenerator()
 		go startExecutor(errChan)
