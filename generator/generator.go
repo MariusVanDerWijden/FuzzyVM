@@ -28,9 +28,19 @@ import (
 	"github.com/holiman/goevmlab/program"
 )
 
-var fork = "Istanbul"
-var sender = common.HexToAddress("a94f5374fce5edbc8e2a8697c15331677e6ebf0b")
-var sk = hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
+type precompile interface {
+	call(p *program.Program, f *filler.Filler) error
+}
+
+var (
+	fork   = "Istanbul"
+	sender = common.HexToAddress("a94f5374fce5edbc8e2a8697c15331677e6ebf0b")
+	sk     = hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
+
+	precompiles = []precompile{
+		new(ECDSA),
+	}
+)
 
 // GenerateProgram creates a new evm program and returns
 // a gstMaker based on it as well as its program code.
@@ -126,6 +136,7 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			)
 			p.CreateAndCall(code, isCreate2, callOp)
 		case 14:
+			// Call a random address
 			c := callObj{
 				gas:       f.BigInt(),
 				address:   common.BytesToAddress(f.ByteSlice(20)),
@@ -136,6 +147,15 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 				outSize:   f.Uint32(),
 			}
 			callRandomizer(p, f, c)
+		case 15:
+			// call a precompile
+			var (
+				idx  = int(f.Byte()) & len(precompiles)
+				prec = precompiles[idx]
+			)
+			if err := prec.call(p, f); err != nil {
+				panic(err)
+			}
 		}
 	}
 	code := p.Bytecode()

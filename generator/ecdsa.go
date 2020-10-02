@@ -28,7 +28,9 @@ import (
 
 var ecdsaAddr = common.HexToAddress("0x1")
 
-func callECDSA(p *program.Program, f *filler.Filler) error {
+type ECDSA struct{}
+
+func (*ECDSA) call(p *program.Program, f *filler.Filler) error {
 	sk, err := ecdsa.GenerateKey(crypto.S256().Params(), f)
 	if err != nil {
 		return err
@@ -37,7 +39,6 @@ func callECDSA(p *program.Program, f *filler.Filler) error {
 	if err != nil {
 		return err
 	}
-	p.Push(sig)
 	c := callObj{
 		gas:       f.BigInt(),
 		address:   ecdsaAddr,
@@ -47,6 +48,7 @@ func callECDSA(p *program.Program, f *filler.Filler) error {
 		outSize:   20,
 		value:     f.BigInt(),
 	}
+	p.Push(sig)
 	callRandomizer(p, f, c)
 	return nil
 }
