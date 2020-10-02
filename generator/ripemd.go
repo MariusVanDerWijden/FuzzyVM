@@ -17,37 +17,27 @@
 package generator
 
 import (
-	"crypto/ecdsa"
-
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/holiman/goevmlab/program"
 )
 
-var ecdsaAddr = common.HexToAddress("0x1")
+var ripemdAddr = common.HexToAddress("0x3")
 
-type ecdsaCaller struct{}
+type ripemdCaller struct{}
 
-func (*ecdsaCaller) call(p *program.Program, f *filler.Filler) error {
-	sk, err := ecdsa.GenerateKey(crypto.S256().Params(), f)
-	if err != nil {
-		return err
-	}
-	sig, err := crypto.Sign(f.ByteSlice256(), sk)
-	if err != nil {
-		return err
-	}
+func (*ripemdCaller) call(p *program.Program, f *filler.Filler) error {
+	data := f.ByteSlice(int(f.Uint32()))
 	c := callObj{
 		gas:       f.BigInt(),
-		address:   ecdsaAddr,
+		address:   sha256Addr,
 		inOffset:  0,
-		inSize:    uint32(len(sig)),
+		inSize:    uint32(len(data)),
 		outOffset: 0,
 		outSize:   20,
 		value:     f.BigInt(),
 	}
-	p.Push(sig)
+	p.Push(data)
 	callRandomizer(p, f, c)
 	return nil
 }
