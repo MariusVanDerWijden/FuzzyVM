@@ -24,19 +24,74 @@ import (
 	"os/exec"
 	"time"
 
+	"gopkg.in/urfave/cli.v1"
+
 	"github.com/MariusVanDerWijden/FuzzyVM/executor"
 )
 
-var maxTests = 10000
-var minTests = 1000
+var (
+	GenProcFlag = cli.StringFlag{
+		Name:  "gen.procs",
+		Usage: "Number of generator processes started",
+		Value: "1",
+	}
+	MaxTestsFlag = cli.IntFlag{
+		Name:  "gen.maxtests",
+		Usage: "Number of max tests generated",
+		Value: 10000,
+	}
+	MinTestsFlag = cli.IntFlag{
+		Name:  "gen.mintests",
+		Usage: "Number of max tests that could fail",
+		Value: 1000,
+	}
+	Build = cli.BoolFlag{
+		Name:  "build",
+		Usage: "If build is set we run go-fuzz-build",
+		Value: false,
+	}
+)
+
+func initApp() *cli.App {
+	app := cli.NewApp()
+	app.Name = "FuzzyVM"
+	app.Author = "Marius van der Wijden"
+	app.Usage = "Generator for Ethereum Virtual Machine tests"
+	app.Action = mainLoop
+	return app
+}
+
+var app = initApp()
 
 func main() {
+	if err := app.Run(os.Args); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func mainLoop(c *cli.Context) {
+	if c.GlobalBool(Build.Name) {
+		if err := startBuilder(); err != nil {
+			panic(err)
+		}
+	} else {
+		generatorLoop(c)
+	}
+}
+
+func generatorLoop(c *cli.Context) {
+	var (
+		genProc  = c.GlobalString(GenProcFlag.Name)
+		minTests = c.GlobalInt(MinTestsFlag.Name)
+		maxTests = c.GlobalInt(MaxTestsFlag.Name)
+	)
 	for {
 		fmt.Println("Starting generator")
 		errChan := make(chan error)
-		cmd := startGenerator()
+		cmd := startGenerator(genProc)
 		go startExecutor(errChan)
-		go watcher(cmd, errChan)
+		go watcher(cmd, errChan, maxTests)
 
 		err := <-errChan
 		if err != nil {
@@ -53,10 +108,19 @@ func main() {
 	}
 }
 
-func startGenerator() *exec.Cmd {
+func startBuilder() error {
+	cmdName := "go-fuzz-build"
+	cmd := exec.Command(cmdName)
+	if err := cmd.Start(); err != nil {
+		panic(err)
+	}
+	return cmd.Wait()
+}
+
+func startGenerator(genThreads string) *exec.Cmd {
 	cmdName := "go-fuzz"
 	dir := "./fuzzer/fuzzer-fuzz.zip"
-	cmd := exec.Command(cmdName, "--bin", dir)
+	cmd := exec.Command(cmdName, "--bin", dir, "--procs", genThreads)
 	cmd.Stdout = os.Stdout
 	if err := cmd.Start(); err != nil {
 		panic(err)
@@ -68,7 +132,7 @@ func startExecutor(errChan chan error) {
 	errChan <- executor.Execute("out", "crashes")
 }
 
-func watcher(cmd *exec.Cmd, errChan chan error) {
+func watcher(cmd *exec.Cmd, errChan chan error, maxTests int) {
 	for {
 		time.Sleep(time.Second * 5)
 		infos, err := ioutil.ReadDir("out")
