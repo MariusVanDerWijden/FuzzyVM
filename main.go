@@ -48,7 +48,6 @@ var (
 	Build = cli.BoolFlag{
 		Name:  "build",
 		Usage: "If build is set we run go-fuzz-build",
-		Value: false,
 	}
 )
 
@@ -58,6 +57,12 @@ func initApp() *cli.App {
 	app.Author = "Marius van der Wijden"
 	app.Usage = "Generator for Ethereum Virtual Machine tests"
 	app.Action = mainLoop
+	app.Flags = []cli.Flag{
+		GenProcFlag,
+		MaxTestsFlag,
+		MinTestsFlag,
+		Build,
+	}
 	return app
 }
 
