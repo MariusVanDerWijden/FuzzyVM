@@ -42,6 +42,7 @@ type precompile interface {
 	call(p *program.Program, f *filler.Filler) error
 }
 
+// CallObj encompasses everything needed to make a call.
 type CallObj struct {
 	Gas       *big.Int
 	Address   common.Address
@@ -52,6 +53,7 @@ type CallObj struct {
 	OutSize   uint32
 }
 
+// CallRandomizer calls an address either with the CALL, CALLCODE or STATICCALL opcode.
 func CallRandomizer(p *program.Program, f *filler.Filler, c CallObj) {
 	switch f.Byte() % 3 {
 	case 0:
@@ -63,6 +65,7 @@ func CallRandomizer(p *program.Program, f *filler.Filler, c CallObj) {
 	}
 }
 
+// CallPrecompile randomly calls one of the available precompiles.
 func CallPrecompile(p *program.Program, f *filler.Filler) {
 	// call a precompile
 	var (
