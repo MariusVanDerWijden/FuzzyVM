@@ -25,7 +25,7 @@ import (
 	"github.com/holiman/goevmlab/program"
 )
 
-var bn256pairingAddr = common.HexToAddress("0x6")
+var bn256pairingAddr = common.HexToAddress("0x8")
 
 type bn256PairingCaller struct{}
 
@@ -39,7 +39,7 @@ func (*bn256PairingCaller) call(p *program.Program, f *filler.Filler) error {
 
 	c := CallObj{
 		Gas:       f.BigInt(),
-		Address:   bn256addAddr,
+		Address:   bn256pairingAddr,
 		InOffset:  0,
 		InSize:    inSize,
 		OutOffset: 0,
