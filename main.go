@@ -63,17 +63,39 @@ func mainLoop(c *cli.Context) {
 	}
 }
 
+func startBuilder() error {
+	cmdName := "go-fuzz-build"
+	cmd := exec.Command(cmdName)
+	cmd.Dir = "fuzzer"
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	// We have to disable CGO
+	cgo := "CGO_ENABLED=0"
+	env := append(os.Environ(), cgo)
+	cmd.Env = env
+	return cmd.Run()
+}
+
 func generatorLoop(c *cli.Context) {
 	var (
 		genProc  = c.GlobalString(genProcFlag.Name)
 		minTests = c.GlobalInt(minTestsFlag.Name)
 		maxTests = c.GlobalInt(maxTestsFlag.Name)
+		errChan  = make(chan error)
 	)
 	for {
 		fmt.Println("Starting generator")
-		errChan := make(chan error)
 		cmd := startGenerator(genProc)
-		go startExecutor(errChan)
+		// Sleep a bit to ensure some tests have been generated.
+		time.Sleep(time.Second)
+		go func() {
+			for {
+				fmt.Println("Starting executor")
+				if err := executor.Execute("out", "crashes"); err != nil {
+					errChan <- err
+				}
+			}
+		}()
 		go watcher(cmd, errChan, maxTests)
 
 		err := <-errChan
@@ -91,19 +113,6 @@ func generatorLoop(c *cli.Context) {
 	}
 }
 
-func startBuilder() error {
-	cmdName := "go-fuzz-build"
-	cmd := exec.Command(cmdName)
-	cmd.Dir = "fuzzer"
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	// We have to disable CGO
-	cgo := "CGO_ENABLED=0"
-	env := append(os.Environ(), cgo)
-	cmd.Env = env
-	return cmd.Run()
-}
-
 func startGenerator(genThreads string) *exec.Cmd {
 	cmdName := "go-fuzz"
 	dir := "./fuzzer/fuzzer-fuzz.zip"
@@ -114,10 +123,6 @@ func startGenerator(genThreads string) *exec.Cmd {
 		panic(err)
 	}
 	return cmd
-}
-
-func startExecutor(errChan chan error) {
-	errChan <- executor.Execute("out", "crashes")
 }
 
 func watcher(cmd *exec.Cmd, errChan chan error, maxTests int) {
