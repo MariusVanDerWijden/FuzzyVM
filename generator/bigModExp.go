@@ -28,15 +28,17 @@ type bigModExpCaller struct{}
 
 func (*bigModExpCaller) call(p *program.Program, f *filler.Filler) error {
 	// TODO (Marius van der Wijden) create proper input
+	input := f.ByteSlice(96)
 	c := callObj{
 		gas:       f.BigInt(),
 		address:   bigModExpAddr,
 		inOffset:  0,
-		inSize:    128,
+		inSize:    96,
 		outOffset: 0,
 		outSize:   64,
 		value:     f.BigInt(),
 	}
+	p.Mstore(input, 0)
 	callRandomizer(p, f, c)
 	return nil
 }
