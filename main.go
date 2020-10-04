@@ -29,28 +29,6 @@ import (
 	"github.com/MariusVanDerWijden/FuzzyVM/executor"
 )
 
-var (
-	GenProcFlag = cli.StringFlag{
-		Name:  "gen.procs",
-		Usage: "Number of generator processes started",
-		Value: "1",
-	}
-	MaxTestsFlag = cli.IntFlag{
-		Name:  "gen.maxtests",
-		Usage: "Number of max tests generated",
-		Value: 10000,
-	}
-	MinTestsFlag = cli.IntFlag{
-		Name:  "gen.mintests",
-		Usage: "Number of max tests that could fail",
-		Value: 1000,
-	}
-	Build = cli.BoolFlag{
-		Name:  "build",
-		Usage: "If build is set we run go-fuzz-build",
-	}
-)
-
 func initApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = "FuzzyVM"
@@ -58,10 +36,10 @@ func initApp() *cli.App {
 	app.Usage = "Generator for Ethereum Virtual Machine tests"
 	app.Action = mainLoop
 	app.Flags = []cli.Flag{
-		GenProcFlag,
-		MaxTestsFlag,
-		MinTestsFlag,
-		Build,
+		genProcFlag,
+		maxTestsFlag,
+		minTestsFlag,
+		buildFlag,
 	}
 	return app
 }
@@ -76,7 +54,7 @@ func main() {
 }
 
 func mainLoop(c *cli.Context) {
-	if c.GlobalBool(Build.Name) {
+	if c.GlobalBool(buildFlag.Name) {
 		if err := startBuilder(); err != nil {
 			panic(err)
 		}
@@ -87,9 +65,9 @@ func mainLoop(c *cli.Context) {
 
 func generatorLoop(c *cli.Context) {
 	var (
-		genProc  = c.GlobalString(GenProcFlag.Name)
-		minTests = c.GlobalInt(MinTestsFlag.Name)
-		maxTests = c.GlobalInt(MaxTestsFlag.Name)
+		genProc  = c.GlobalString(genProcFlag.Name)
+		minTests = c.GlobalInt(minTestsFlag.Name)
+		maxTests = c.GlobalInt(maxTestsFlag.Name)
 	)
 	for {
 		fmt.Println("Starting generator")
@@ -116,10 +94,14 @@ func generatorLoop(c *cli.Context) {
 func startBuilder() error {
 	cmdName := "go-fuzz-build"
 	cmd := exec.Command(cmdName)
-	if err := cmd.Start(); err != nil {
-		panic(err)
-	}
-	return cmd.Wait()
+	cmd.Dir = "fuzzer"
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	// We have to disable CGO
+	cgo := "CGO_ENABLED=0"
+	env := append(os.Environ(), cgo)
+	cmd.Env = env
+	return cmd.Run()
 }
 
 func startGenerator(genThreads string) *exec.Cmd {
@@ -127,6 +109,7 @@ func startGenerator(genThreads string) *exec.Cmd {
 	dir := "./fuzzer/fuzzer-fuzz.zip"
 	cmd := exec.Command(cmdName, "--bin", dir, "--procs", genThreads)
 	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
 		panic(err)
 	}
