@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the fuzzy-vm library. If not, see <http://www.gnu.org/licenses/>.
 
-package generator
+package precompiles
 
 import (
 	"encoding/binary"
@@ -62,16 +62,16 @@ func (*blake2fCaller) call(p *program.Program, f *filler.Filler) error {
 		}
 	}
 
-	c := callObj{
-		gas:       f.BigInt(),
-		address:   blake2fAddr,
-		inOffset:  0,
-		inSize:    213,
-		outOffset: 0,
-		outSize:   64,
-		value:     f.BigInt(),
+	c := CallObj{
+		Gas:       f.BigInt(),
+		Address:   blake2fAddr,
+		InOffset:  0,
+		InSize:    213,
+		OutOffset: 0,
+		OutSize:   64,
+		Value:     f.BigInt(),
 	}
 	p.Mstore(input, 0)
-	callRandomizer(p, f, c)
+	CallRandomizer(p, f, c)
 	return nil
 }

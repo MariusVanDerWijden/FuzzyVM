@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the fuzzy-vm library. If not, see <http://www.gnu.org/licenses/>.
 
-package generator
+package precompiles
 
 import (
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
@@ -22,22 +22,22 @@ import (
 	"github.com/holiman/goevmlab/program"
 )
 
-var identityAddr = common.HexToAddress("0x4")
+var ripemdAddr = common.HexToAddress("0x3")
 
-type identityCaller struct{}
+type ripemdCaller struct{}
 
-func (*identityCaller) call(p *program.Program, f *filler.Filler) error {
+func (*ripemdCaller) call(p *program.Program, f *filler.Filler) error {
 	data := f.ByteSlice(int(f.Uint32()))
-	c := callObj{
-		gas:       f.BigInt(),
-		address:   identityAddr,
-		inOffset:  0,
-		inSize:    uint32(len(data)),
-		outOffset: 0,
-		outSize:   20,
-		value:     f.BigInt(),
+	c := CallObj{
+		Gas:       f.BigInt(),
+		Address:   ripemdAddr,
+		InOffset:  0,
+		InSize:    uint32(len(data)),
+		OutOffset: 0,
+		OutSize:   20,
+		Value:     f.BigInt(),
 	}
 	p.Push(data)
-	callRandomizer(p, f, c)
+	CallRandomizer(p, f, c)
 	return nil
 }

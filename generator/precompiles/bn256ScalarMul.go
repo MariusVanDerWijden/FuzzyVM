@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the fuzzy-vm library. If not, see <http://www.gnu.org/licenses/>.
 
-package generator
+package precompiles
 
 import (
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
@@ -23,26 +23,29 @@ import (
 	"github.com/holiman/goevmlab/program"
 )
 
-var bn256addAddr = common.HexToAddress("0x6")
+var bn256mulAddr = common.HexToAddress("0x7")
 
-type bn256Caller struct{}
+type bn256MulCaller struct{}
 
-func (*bn256Caller) call(p *program.Program, f *filler.Filler) error {
+func (*bn256MulCaller) call(p *program.Program, f *filler.Filler) error {
 	k := f.BigInt()
 	point := new(bn256.G1).ScalarBaseMult(k)
-	k2 := f.BigInt()
-	point2 := new(bn256.G1).ScalarBaseMult(k2)
-	c := callObj{
-		gas:       f.BigInt(),
-		address:   bn256addAddr,
-		inOffset:  0,
-		inSize:    128,
-		outOffset: 0,
-		outSize:   64,
-		value:     f.BigInt(),
+	scalar := f.BigInt()
+	c := CallObj{
+		Gas:       f.BigInt(),
+		Address:   bn256mulAddr,
+		InOffset:  0,
+		InSize:    96,
+		OutOffset: 0,
+		OutSize:   64,
+		Value:     f.BigInt(),
 	}
+	// 64 bytes curve point
 	p.Mstore(point.Marshal(), 0)
-	p.Mstore(point2.Marshal(), 64)
-	callRandomizer(p, f, c)
+	// 32 bytes scalar
+	bytes := make([]byte, 32)
+	copy(bytes, scalar.Bytes())
+	p.Mstore(bytes[:], 64)
+	CallRandomizer(p, f, c)
 	return nil
 }

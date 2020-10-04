@@ -14,30 +14,40 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the fuzzy-vm library. If not, see <http://www.gnu.org/licenses/>.
 
-package generator
+package precompiles
 
 import (
+	"crypto/ecdsa"
+
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/holiman/goevmlab/program"
 )
 
-var sha256Addr = common.HexToAddress("0x2")
+var ecdsaAddr = common.HexToAddress("0x1")
 
-type sha256Caller struct{}
+type ecdsaCaller struct{}
 
-func (*sha256Caller) call(p *program.Program, f *filler.Filler) error {
-	data := f.ByteSlice256()
-	c := callObj{
-		gas:       f.BigInt(),
-		address:   sha256Addr,
-		inOffset:  0,
-		inSize:    uint32(len(data)),
-		outOffset: 0,
-		outSize:   32,
-		value:     f.BigInt(),
+func (*ecdsaCaller) call(p *program.Program, f *filler.Filler) error {
+	sk, err := ecdsa.GenerateKey(crypto.S256(), f)
+	if err != nil {
+		return err
 	}
-	p.Mstore(data, 0)
-	callRandomizer(p, f, c)
+	sig, err := crypto.Sign(f.ByteSlice(32), sk)
+	if err != nil {
+		return err
+	}
+	c := CallObj{
+		Gas:       f.BigInt(),
+		Address:   ecdsaAddr,
+		InOffset:  0,
+		InSize:    uint32(len(sig)),
+		OutOffset: 0,
+		OutSize:   20,
+		Value:     f.BigInt(),
+	}
+	p.Mstore(sig, 0)
+	CallRandomizer(p, f, c)
 	return nil
 }

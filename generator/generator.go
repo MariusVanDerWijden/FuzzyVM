@@ -21,6 +21,7 @@ import (
 	"math/big"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
+	"github.com/MariusVanDerWijden/FuzzyVM/generator/precompiles"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/holiman/goevmlab/fuzzing"
@@ -28,24 +29,10 @@ import (
 	"github.com/holiman/goevmlab/program"
 )
 
-type precompile interface {
-	call(p *program.Program, f *filler.Filler) error
-}
-
 var (
 	fork   = "Istanbul"
 	sender = common.HexToAddress("a94f5374fce5edbc8e2a8697c15331677e6ebf0b")
 	sk     = hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
-
-	precompiles = []precompile{
-		new(ecdsaCaller),
-		new(sha256Caller),
-		new(ripemdCaller),
-		new(identityCaller),
-		new(bigModExpCaller),
-		new(bn256Caller),
-		new(bn256MulCaller),
-	}
 )
 
 // GenerateProgram creates a new evm program and returns
@@ -143,50 +130,22 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			p.CreateAndCall(code, isCreate2, callOp)
 		case 14:
 			// Call a random address
-			c := callObj{
-				gas:       f.BigInt(),
-				address:   common.BytesToAddress(f.ByteSlice(20)),
-				value:     f.BigInt(),
-				inOffset:  f.Uint32(),
-				inSize:    f.Uint32(),
-				outOffset: f.Uint32(),
-				outSize:   f.Uint32(),
+			c := precompiles.CallObj{
+				Gas:       f.BigInt(),
+				Address:   common.BytesToAddress(f.ByteSlice(20)),
+				Value:     f.BigInt(),
+				InOffset:  f.Uint32(),
+				InSize:    f.Uint32(),
+				OutOffset: f.Uint32(),
+				OutSize:   f.Uint32(),
 			}
-			callRandomizer(p, f, c)
+			precompiles.CallRandomizer(p, f, c)
 		case 15:
-			// call a precompile
-			var (
-				idx  = int(f.Byte()) % len(precompiles)
-				prec = precompiles[idx]
-			)
-			if err := prec.call(p, f); err != nil {
-				panic(err)
-			}
+			precompiles.CallPrecompile(p, f)
 		}
 	}
 	code := p.Bytecode()
 	return createGstMaker(f, code), code
-}
-
-type callObj struct {
-	gas       *big.Int
-	address   common.Address
-	value     *big.Int
-	inOffset  uint32
-	inSize    uint32
-	outOffset uint32
-	outSize   uint32
-}
-
-func callRandomizer(p *program.Program, f *filler.Filler, c callObj) {
-	switch f.Byte() % 3 {
-	case 0:
-		p.Call(c.gas, c.address, c.value, c.inOffset, c.inSize, c.outOffset, c.outSize)
-	case 1:
-		p.CallCode(c.gas, c.address, c.value, c.inOffset, c.inSize, c.outOffset, c.outSize)
-	case 2:
-		p.StaticCall(c.gas, c.address, c.inOffset, c.inSize, c.outOffset, c.outSize)
-	}
 }
 
 func createGstMaker(fill *filler.Filler, code []byte) *fuzzing.GstMaker {
