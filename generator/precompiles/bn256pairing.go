@@ -62,12 +62,12 @@ func (*bn256PairingCaller) call(p *program.Program, f *filler.Filler) error {
 // e(aMul1 * G1, bMul1 * G2) * e(aMul2 * G1, bMul2 * G2) * ... * e(aMuln * G1, bMuln * G2) == e(G1, G2) ^ s
 // with s = sum(x: 1 -> n: (aMulx * bMulx))
 // This code is analogous to https://github.com/holiman/goevmlab/blob/master/fuzzing/bls12381.go
-// But I'm not sure if it applies to barreto-naehrig curves too.
+// Apparently it applies to barreto-naehrig curves too.
 func pairing(rounds int, f *filler.Filler) ([]*bn256.G1, []*bn256.G2) {
 	var (
 		curvePoints []*bn256.G1
 		twistPoints []*bn256.G2
-		target      *big.Int
+		target      = new(big.Int)
 	)
 	// LHS: sum(x: 1->n: e(aMulx * G1, bMulx * G2))
 	for i := 0; i < int(rounds); i++ {
@@ -86,7 +86,7 @@ func pairing(rounds int, f *filler.Filler) ([]*bn256.G1, []*bn256.G2) {
 	// RHS: e(G1, G2) ^ s
 	pointG1 := new(bn256.G1).ScalarBaseMult(target)
 	pointG1 = pointG1.Neg(pointG1)
-	pointG2 := new(bn256.G2)
+	pointG2 := new(bn256.G2).ScalarBaseMult(big.NewInt(1))
 	curvePoints = append(curvePoints, pointG1)
 	twistPoints = append(twistPoints, pointG2)
 	return curvePoints, twistPoints
