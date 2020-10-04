@@ -33,6 +33,8 @@ var (
 		new(bigModExpCaller),
 		new(bn256Caller),
 		new(bn256MulCaller),
+		new(bn256PairingCaller),
+		new(blake2fCaller),
 	}
 )
 
