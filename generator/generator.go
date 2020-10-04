@@ -42,6 +42,9 @@ var (
 		new(sha256Caller),
 		new(ripemdCaller),
 		new(identityCaller),
+		new(bigModExpCaller),
+		new(bn256Caller),
+		new(bn256MulCaller),
 	}
 )
 

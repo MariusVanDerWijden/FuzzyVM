@@ -30,7 +30,7 @@ func (*ripemdCaller) call(p *program.Program, f *filler.Filler) error {
 	data := f.ByteSlice(int(f.Uint32()))
 	c := callObj{
 		gas:       f.BigInt(),
-		address:   sha256Addr,
+		address:   ripemdAddr,
 		inOffset:  0,
 		inSize:    uint32(len(data)),
 		outOffset: 0,
