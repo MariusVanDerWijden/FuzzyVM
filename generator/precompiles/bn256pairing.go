@@ -36,6 +36,10 @@ func (*bn256PairingCaller) call(p *program.Program, f *filler.Filler) error {
 		inSize                   = uint32(len(curvePoints) * 192)
 		offset                   = uint32(0)
 	)
+	// bloat the pairing with probability 1/2
+	if f.Bool() {
+		curvePoints, twistPoints = bloatPairing(curvePoints, twistPoints, f)
+	}
 
 	c := CallObj{
 		Gas:       f.BigInt(),
@@ -90,4 +94,21 @@ func pairing(rounds int, f *filler.Filler) ([]*bn256.G1, []*bn256.G2) {
 	curvePoints = append(curvePoints, pointG1)
 	twistPoints = append(twistPoints, pointG2)
 	return curvePoints, twistPoints
+}
+
+// bloatPairing bloats a pairing with infinity points that should be ignored in checks
+func bloatPairing(a []*bn256.G1, b []*bn256.G2, f *filler.Filler) ([]*bn256.G1, []*bn256.G2) {
+	var (
+		aIdx = int(f.Byte())
+		bIdx = int(f.Byte())
+	)
+	if aIdx < len(a) {
+		a = append(a[:aIdx+1], a[aIdx:]...)
+		a[aIdx] = new(bn256.G1).ScalarBaseMult(new(big.Int).SetInt64(0))
+	}
+	if bIdx < len(b) {
+		b = append(b[:bIdx+1], b[aIdx:]...)
+		b[bIdx] = new(bn256.G2).ScalarBaseMult(new(big.Int).SetInt64(0))
+	}
+	return a, b
 }
