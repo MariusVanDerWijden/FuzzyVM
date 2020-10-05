@@ -30,10 +30,11 @@ import (
 )
 
 var (
-	fork     = "Istanbul"
-	sender   = common.HexToAddress("a94f5374fce5edbc8e2a8697c15331677e6ebf0b")
-	sk       = hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
-	isCalled = false
+	fork              = "Istanbul"
+	sender            = common.HexToAddress("a94f5374fce5edbc8e2a8697c15331677e6ebf0b")
+	sk                = hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
+	recursionLevel    = 0
+	maxRecursionLevel = 10
 )
 
 // GenerateProgram creates a new evm program and returns
@@ -120,10 +121,10 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			p.CreateAndCall(code, isCreate2, callOp)
 		case 13:
 			// Prevent to deep recursion
-			if isCalled {
+			if recursionLevel > maxRecursionLevel {
 				continue
 			}
-			isCalled = true
+			recursionLevel++
 			// Create and call a meaningful program
 			var (
 				seedLen   = f.Uint16()
@@ -134,6 +135,9 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 				callOp    = ops.OpCode(f.Byte())
 			)
 			p.CreateAndCall(code, isCreate2, callOp)
+			// Decreasing recursion level generates to heavy test cases,
+			// so once we reach maxRecursionLevel we don't create new CreateAndCalls.
+			//recursionLevel--
 		case 14:
 			// Call a random address
 			c := precompiles.CallObj{
