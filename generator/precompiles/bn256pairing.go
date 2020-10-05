@@ -98,17 +98,23 @@ func pairing(rounds int, f *filler.Filler) ([]*bn256.G1, []*bn256.G2) {
 
 // bloatPairing bloats a pairing with infinity points that should be ignored in checks
 func bloatPairing(a []*bn256.G1, b []*bn256.G2, f *filler.Filler) ([]*bn256.G1, []*bn256.G2) {
-	var (
-		aIdx = int(f.Byte())
-		bIdx = int(f.Byte())
-	)
-	if aIdx < len(a) {
-		a = append(a[:aIdx+1], a[aIdx:]...)
-		a[aIdx] = new(bn256.G1).ScalarBaseMult(new(big.Int).SetInt64(0))
-	}
-	if bIdx < len(b) {
-		b = append(b[:bIdx+1], b[aIdx:]...)
-		b[bIdx] = new(bn256.G2).ScalarBaseMult(new(big.Int).SetInt64(0))
+	for i := 0; i < int(f.Byte()); i++ {
+		index := int(f.Byte())
+		if index < len(a) && index < len(b) {
+			a = append(a[:index+1], a[index:]...)
+			b = append(b[:index+1], b[index:]...)
+			if f.Bool() {
+				// set a to infinity
+				a[index] = new(bn256.G1).ScalarBaseMult(new(big.Int).SetInt64(0))
+				mul := f.BigInt()
+				b[index] = new(bn256.G2).ScalarBaseMult(mul)
+			} else {
+				// set b to infinity
+				mul := f.BigInt()
+				a[index] = new(bn256.G1).ScalarBaseMult(mul)
+				b[index] = new(bn256.G2).ScalarBaseMult(new(big.Int).SetInt64(0))
+			}
+		}
 	}
 	return a, b
 }
