@@ -25,6 +25,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/holiman/goevmlab/evms"
 	"github.com/korovkin/limiter"
 	"github.com/pkg/errors"
@@ -46,17 +47,19 @@ func Execute(dirName, outDir string) error {
 	}
 	errChan := make(chan error)
 	limit := limiter.NewConcurrencyLimiter(10)
+	meter := metrics.GetOrRegisterMeter("ticks", nil)
 
 	for i, info := range infos {
 		// All generated tests end in .json
 		if strings.HasSuffix(info.Name(), ".json") {
-			fmt.Printf("Executing test: %v of %v \n", i/2, len(infos)/2)
+			fmt.Printf("Executing test: %v of %v, %v per minute \n", i/2, len(infos)/2, meter.Rate1())
 			job := func() {
 				if err := executeFullTest(dirName, outDir, info.Name()); err != nil {
 					err := errors.Wrap(err, fmt.Sprintf("in file: %v", info.Name()))
 					fmt.Println(err)
 					errChan <- err
 				}
+				meter.Mark(1)
 			}
 			limit.Execute(job)
 		}
