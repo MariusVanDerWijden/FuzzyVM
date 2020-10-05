@@ -17,7 +17,9 @@
 package generator
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 )
@@ -27,4 +29,19 @@ func TestGenerator(t *testing.T) {
 	input := []byte(inputEscaped)
 	filler := filler.NewFiller(input)
 	GenerateProgram(filler)
+}
+
+func TestRuntime(t *testing.T) {
+	testStart := time.Now()
+	for i := byte(0); i < 255; i++ {
+		start := time.Now()
+		fmt.Printf("Testing with val %v \n", i)
+		input := []byte{i}
+		filler := filler.NewFiller(input)
+		GenerateProgram(filler)
+		fmt.Printf("Took %v\n", time.Since(start))
+	}
+	if time.Since(testStart) > 10*time.Second {
+		t.Error("Tests took too long to generate")
+	}
 }

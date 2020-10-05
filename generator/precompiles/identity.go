@@ -27,7 +27,7 @@ var identityAddr = common.HexToAddress("0x4")
 type identityCaller struct{}
 
 func (*identityCaller) call(p *program.Program, f *filler.Filler) error {
-	data := f.ByteSlice(int(f.Uint32()))
+	data := f.ByteSlice(int(f.Uint16()))
 	c := CallObj{
 		Gas:       f.BigInt(),
 		Address:   identityAddr,
@@ -37,7 +37,7 @@ func (*identityCaller) call(p *program.Program, f *filler.Filler) error {
 		OutSize:   20,
 		Value:     f.BigInt(),
 	}
-	p.Push(data)
+	p.Mstore(data, 0)
 	CallRandomizer(p, f, c)
 	return nil
 }

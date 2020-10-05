@@ -30,9 +30,10 @@ import (
 )
 
 var (
-	fork   = "Istanbul"
-	sender = common.HexToAddress("a94f5374fce5edbc8e2a8697c15331677e6ebf0b")
-	sk     = hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
+	fork     = "Istanbul"
+	sender   = common.HexToAddress("a94f5374fce5edbc8e2a8697c15331677e6ebf0b")
+	sk       = hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
+	isCalled = false
 )
 
 // GenerateProgram creates a new evm program and returns
@@ -78,9 +79,9 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 		case 7:
 			// Copy a part of memory into storage
 			var (
-				memStart  = int(f.Uint32())
-				memSize   = int(f.Uint32())
-				startSlot = int(f.Uint32())
+				memStart  = int(f.Uint16())
+				memSize   = int(f.Uint16())
+				startSlot = int(f.Uint16())
 			)
 			p.MemToStorage(memStart, memSize, startSlot)
 		case 8:
@@ -118,9 +119,14 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			)
 			p.CreateAndCall(code, isCreate2, callOp)
 		case 13:
+			// Prevent to deep recursion
+			if isCalled {
+				continue
+			}
+			isCalled = true
 			// Create and call a meaningful program
 			var (
-				seedLen   = f.Uint32()
+				seedLen   = f.Uint16()
 				seed      = f.ByteSlice(int(seedLen))
 				newFiller = filler.NewFiller(seed)
 				_, code   = GenerateProgram(newFiller)

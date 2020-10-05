@@ -66,8 +66,9 @@ func (f *Filler) Byte() byte {
 // Read implements the io.Reader interface.
 func (f *Filler) Read(b []byte) (n int, err error) {
 	// TODO (MariusVanDerWijden) this can be done more efficiently
+	tmp := f.ByteSlice(len(b))
 	for i := 0; i < len(b); i++ {
-		b[i] = f.Byte()
+		b[i] = tmp[i]
 	}
 	return len(b), nil
 }
@@ -81,16 +82,33 @@ func (f *Filler) BigInt() *big.Int {
 // ByteSlice returns a byteslice with `items` values.
 func (f *Filler) ByteSlice(items int) []byte {
 	// TODO (MariusVanDerWijden) this can be done way more efficiently
-	var b []byte
-	for i := 0; i < items; i++ {
-		b = append(b, f.Byte())
+	b := make([]byte, items)
+	if f.pointer+items < len(f.data) {
+		copy(b, f.data[f.pointer:])
+	} else {
+		// Not enough data available
+		for i := 0; i < items; {
+			it := copy(b[i:], f.data[f.pointer:])
+			if it == 0 {
+				panic("should not happen, infinite loop")
+			}
+			i += it
+			f.pointer = 0
+		}
+		f.usedUp = true
 	}
+	f.incPointer(items)
 	return b
 }
 
 // ByteSlice256 returns a byteslice with 1..256 values.
 func (f *Filler) ByteSlice256() []byte {
 	return f.ByteSlice(int(f.Byte()))
+}
+
+// Uint16 returns a new uint16.
+func (f *Filler) Uint16() uint16 {
+	return binary.BigEndian.Uint16(f.ByteSlice(2))
 }
 
 // Uint32 returns a new uint32.

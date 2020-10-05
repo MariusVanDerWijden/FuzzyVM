@@ -35,6 +35,10 @@ var outputDir = "out"
 
 // Fuzz is the entry point for go-fuzz
 func Fuzz(data []byte) int {
+	// Too little data destroys our performance and makes it hard for the generator
+	if len(data) < 32 {
+		return -1
+	}
 	f := filler.NewFiller(data)
 	testMaker, _ := generator.GenerateProgram(f)
 	name := randTestName(data)

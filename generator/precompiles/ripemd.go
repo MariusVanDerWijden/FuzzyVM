@@ -27,7 +27,7 @@ var ripemdAddr = common.HexToAddress("0x3")
 type ripemdCaller struct{}
 
 func (*ripemdCaller) call(p *program.Program, f *filler.Filler) error {
-	data := f.ByteSlice(int(f.Uint32()))
+	data := f.ByteSlice(int(f.Uint16()))
 	c := CallObj{
 		Gas:       f.BigInt(),
 		Address:   ripemdAddr,
@@ -37,7 +37,7 @@ func (*ripemdCaller) call(p *program.Program, f *filler.Filler) error {
 		OutSize:   20,
 		Value:     f.BigInt(),
 	}
-	p.Push(data)
+	p.Mstore(data, 0)
 	CallRandomizer(p, f, c)
 	return nil
 }

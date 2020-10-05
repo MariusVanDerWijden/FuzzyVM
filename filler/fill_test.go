@@ -19,6 +19,7 @@ package filler
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"testing"
 )
 
@@ -58,7 +59,7 @@ func testFiller(t *testing.T, data []byte, usedUp bool) {
 func testFunc(t *testing.T, data []byte, exp []byte, fut func(f *Filler, exp []byte) bool) {
 	filler := NewFiller(data)
 	if !fut(filler, exp) {
-		t.Errorf("test failed: input: %v", data)
+		t.Errorf("test failed: input: %v exp: %v", data, exp)
 	}
 }
 
@@ -73,7 +74,9 @@ func TestByte(t *testing.T) {
 
 func TestBytes(t *testing.T) {
 	fut := func(f *Filler, exp []byte) bool {
-		return bytes.Equal(f.ByteSlice256(), exp)
+		got := f.ByteSlice256()
+		fmt.Printf("got: %v", got)
+		return bytes.Equal(got, exp)
 	}
 	type testCase struct {
 		data []byte
@@ -86,6 +89,7 @@ func TestBytes(t *testing.T) {
 		{[]byte{2, 2, 3}, []byte{2, 3}},
 		{[]byte{1, 2, 3, 4}, []byte{2}},
 		{[]byte{6, 2, 3, 4}, []byte{2, 3, 4, 6, 2, 3}},
+		{[]byte{2, 2, 3, 4}, []byte{2, 3}},
 	}
 	for _, test := range tests {
 		testFunc(t, test.data, test.exp, fut)
