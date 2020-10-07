@@ -54,7 +54,7 @@ func Execute(dirName, outDir string) error {
 		if strings.HasSuffix(info.Name(), ".json") {
 			fmt.Printf("Executing test: %v of %v, %v per minute \n", i/2, len(infos)/2, meter.Rate1())
 			job := func() {
-				if err := executeFullTest(dirName, outDir, info.Name()); err != nil {
+				if err := ExecuteFullTest(dirName, outDir, info.Name(), true); err != nil {
 					err := errors.Wrap(err, fmt.Sprintf("in file: %v", info.Name()))
 					fmt.Println(err)
 					errChan <- err
@@ -75,7 +75,7 @@ func Execute(dirName, outDir string) error {
 	}
 }
 
-func executeFullTest(dirName, outDir, filename string) error {
+func ExecuteFullTest(dirName, outDir, filename string, doPurge bool) error {
 	var (
 		testFile  = fmt.Sprintf("%v/%v", dirName, filename)
 		testName  = strings.TrimRight(filename, ".json")
@@ -91,31 +91,35 @@ func executeFullTest(dirName, outDir, filename string) error {
 			return err
 		}
 	} else {
-		if err := purge(testFile, traceFile); err != nil {
-			return err
+		if doPurge {
+			if err := purge(testFile, traceFile); err != nil {
+				return err
+			}
+		} else {
+			printOutputs(outputs)
 		}
 	}
 	return nil
 }
 
 // executeTest executes a state test
-func executeTest(testName string) ([]*bytes.Buffer, error) {
-	var buf []*bytes.Buffer
+func executeTest(testName string) ([][]byte, error) {
+	var buf [][]byte
 	for _, vm := range vms {
 		var buffer bytes.Buffer
 		if _, err := vm.RunStateTest(testName, &buffer, false); err != nil {
 			return nil, err
 		}
-		buf = append(buf, &buffer)
+		buf = append(buf, buffer.Bytes())
 	}
 	return buf, nil
 }
 
 // verify checks if the traces match the default trace.
-func verify(traceName string, outputs []*bytes.Buffer) bool {
+func verify(traceName string, outputs [][]byte) bool {
 	var ioReaders []io.Reader
 	for _, out := range outputs {
-		ioReaders = append(ioReaders, out)
+		ioReaders = append(ioReaders, bytes.NewReader(out))
 	}
 	// Add the standard trace to the test (currently deactivated)
 	/*
@@ -129,14 +133,14 @@ func verify(traceName string, outputs []*bytes.Buffer) bool {
 }
 
 // dump writes outputs to a file in case of a verification problem
-func dump(filename, outdir string, vms []evms.Evm, outputs []*bytes.Buffer) error {
+func dump(filename, outdir string, vms []evms.Evm, outputs [][]byte) error {
 	for i, out := range outputs {
 		filename := fmt.Sprintf("%v/%v-%v-trace.jsonl", outdir, filename, vms[i].Name())
 		f, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
 		if err != nil {
 			return err
 		}
-		if _, err := f.Write(out.Bytes()); err != nil {
+		if _, err := f.Write(out); err != nil {
 			return err
 		}
 	}
@@ -152,4 +156,14 @@ func purge(filename, tracename string) error {
 		return err
 	}
 	return nil
+}
+
+func printOutputs(outputs [][]byte) {
+	fmt.Println("TRACES:")
+	fmt.Println("--------------")
+	for i, out := range outputs {
+		fmt.Printf("%v: \n", vms[i].Name)
+		fmt.Print(string(out))
+		fmt.Println("--------------")
+	}
 }

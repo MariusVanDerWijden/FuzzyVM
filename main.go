@@ -40,11 +40,16 @@ func initApp() *cli.App {
 		maxTestsFlag,
 		minTestsFlag,
 		buildFlag,
+		retestFlag,
 	}
 	return app
 }
 
-var app = initApp()
+var (
+	app     = initApp()
+	dirName = "out"
+	outDir  = "crashes"
+)
 
 func main() {
 	if err := app.Run(os.Args); err != nil {
@@ -58,6 +63,8 @@ func mainLoop(c *cli.Context) {
 		if err := startBuilder(); err != nil {
 			panic(err)
 		}
+	} else if c.GlobalString(retestFlag.Name) != "" {
+		retest(c)
 	} else {
 		generatorLoop(c)
 	}
@@ -76,6 +83,11 @@ func startBuilder() error {
 	return cmd.Run()
 }
 
+func retest(c *cli.Context) {
+	test := c.GlobalString(retestFlag.Name)
+	executor.ExecuteFullTest(dirName, outDir, test, false)
+}
+
 func generatorLoop(c *cli.Context) {
 	var (
 		genProc  = c.GlobalString(genProcFlag.Name)
@@ -91,7 +103,7 @@ func generatorLoop(c *cli.Context) {
 		go func() {
 			for {
 				fmt.Println("Starting executor")
-				if err := executor.Execute("out", "crashes"); err != nil {
+				if err := executor.Execute(dirName, outDir); err != nil {
 					errChan <- err
 				}
 			}
@@ -102,7 +114,7 @@ func generatorLoop(c *cli.Context) {
 		if err != nil {
 			panic(err)
 		}
-		infos, err := ioutil.ReadDir("out")
+		infos, err := ioutil.ReadDir(dirName)
 		if err != nil {
 			panic(err)
 		}

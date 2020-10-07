@@ -27,7 +27,7 @@ func TestExecute(t *testing.T) {
 
 func TestExecuteFullTest(t *testing.T) {
 	file := "FuzzyVM-1029641488-461617836.json"
-	err := executeFullTest("../out", "../crashes", file)
+	err := ExecuteFullTest("../out", "../crashes", file, true)
 	if err != nil {
 		t.Error(err)
 	}

@@ -38,4 +38,9 @@ var (
 		Name:  "build",
 		Usage: "If build is set we run go-fuzz-build",
 	}
+	retestFlag = cli.StringFlag{
+		Name:  "retest",
+		Usage: "Rerun the specified test",
+		Value: "",
+	}
 )
