@@ -40,6 +40,7 @@ var (
 	}
 )
 
+// Execute runs all tests in `dirName` and saves crashers in `outDir`
 func Execute(dirName, outDir string) error {
 	infos, err := ioutil.ReadDir(dirName)
 	if err != nil {
@@ -75,6 +76,7 @@ func Execute(dirName, outDir string) error {
 	}
 }
 
+// ExecuteFullTest executes a single test.
 func ExecuteFullTest(dirName, outDir, filename string, doPurge bool) error {
 	var (
 		testFile  = fmt.Sprintf("%v/%v", dirName, filename)
@@ -158,11 +160,12 @@ func purge(filename, tracename string) error {
 	return nil
 }
 
+// printOutputs prints out the produced traces
 func printOutputs(outputs [][]byte) {
 	fmt.Println("TRACES:")
 	fmt.Println("--------------")
 	for i, out := range outputs {
-		fmt.Printf("%v: \n", vms[i].Name)
+		fmt.Printf("%v: \n", vms[i].Name())
 		fmt.Print(string(out))
 		fmt.Println("--------------")
 	}
