@@ -33,10 +33,11 @@ import (
 
 var (
 	vms = []evms.Evm{
-		evms.NewGethEVM("/home/matematik/go/src/github.com/ethereum/go-ethereum/build/bin/evm"),
-		evms.NewParityVM("/home/matematik/ethereum/openethereum/target/release/openethereum-evm"),
-		evms.NewNethermindVM("/home/matematik/ethereum/nethermind/nethtest"),
-		evms.NewBesuVM("/home/matematik/ethereum/besu/ethereum/evmtool/build/install/evmtool/bin/evm"),
+		evms.NewGethEVM("vms/geth-evm"),
+		evms.NewParityVM("vms/openethereum-evm"),
+		evms.NewNethermindVM("vms/nethtest"),
+		evms.NewBesuVM("vms/besu-evm"),
+		evms.NewGethEVM("vms/turbogeth-evm"),
 	}
 )
 
