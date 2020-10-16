@@ -47,7 +47,7 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 
 	// Run for counter rounds
 	counter := f.Byte()
-	for i := 0; byte(i) < counter; i++ {
+	for i := 0; i < int(counter); i++ {
 		rnd := f.Byte()
 		switch rnd % 25 {
 		case 0:

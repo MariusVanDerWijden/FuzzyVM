@@ -27,7 +27,7 @@ var (
 	maxTestsFlag = cli.IntFlag{
 		Name:  "gen.maxtests",
 		Usage: "Number of max tests generated",
-		Value: 10000,
+		Value: 5000,
 	}
 	minTestsFlag = cli.IntFlag{
 		Name:  "gen.mintests",
@@ -37,6 +37,10 @@ var (
 	buildFlag = cli.BoolFlag{
 		Name:  "build",
 		Usage: "If build is set we run go-fuzz-build",
+	}
+	execNoGen = cli.BoolFlag{
+		Name:  "exec",
+		Usage: "If exec is set, we only execute not generate new tests",
 	}
 	retestFlag = cli.StringFlag{
 		Name:  "retest",

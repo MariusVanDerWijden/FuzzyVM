@@ -33,11 +33,11 @@ import (
 
 var (
 	vms = []evms.Evm{
-		evms.NewGethEVM("vms/geth-evm"),
-		evms.NewParityVM("vms/openethereum-evm"),
-		evms.NewNethermindVM("vms/nethtest"),
-		evms.NewBesuVM("vms/besu-evm"),
-		evms.NewGethEVM("vms/turbogeth-evm"),
+		evms.NewGethEVM("/home/matematik/ethereum/FuzzyVM/vms/geth-evm"),
+		evms.NewParityVM("/home/matematik/ethereum/FuzzyVM/vms/openethereum-evm"),
+		evms.NewNethermindVM("/home/matematik/ethereum/FuzzyVM/vms/nethtest"),
+		evms.NewBesuVM("/home/matematik/ethereum/besu/ethereum/evmtool/build/install/evmtool/bin/evm"),
+		evms.NewTurboGethEVM("/home/matematik/ethereum/FuzzyVM/vms/turbogeth-evm"),
 	}
 )
 
@@ -54,14 +54,15 @@ func Execute(dirName, outDir string) error {
 	for i, info := range infos {
 		// All generated tests end in .json
 		if strings.HasSuffix(info.Name(), ".json") {
-			fmt.Printf("Executing test: %v of %v, %v per minute \n", i/2, len(infos)/2, meter.Rate1())
+			fmt.Printf("Executing test: %v of %v, %f per minute \n", i/2, len(infos)/2, meter.Rate1())
+			meter.Mark(1)
+			name := info.Name()
 			job := func() {
-				if err := ExecuteFullTest(dirName, outDir, info.Name(), true); err != nil {
-					err := errors.Wrap(err, fmt.Sprintf("in file: %v", info.Name()))
+				if err := ExecuteFullTest(dirName, outDir, name, true); err != nil {
+					err := errors.Wrap(err, fmt.Sprintf("in file: %v", name))
 					fmt.Println(err)
-					errChan <- err
+					//errChan <- err
 				}
-				meter.Mark(1)
 			}
 			limit.Execute(job)
 		}
@@ -108,8 +109,9 @@ func ExecuteFullTest(dirName, outDir, filename string, doPurge bool) error {
 // executeTest executes a state test
 func executeTest(testName string) ([][]byte, error) {
 	var buf [][]byte
+	var buffer bytes.Buffer
 	for _, vm := range vms {
-		var buffer bytes.Buffer
+		buffer.Reset()
 		if _, err := vm.RunStateTest(testName, &buffer, false); err != nil {
 			return nil, err
 		}

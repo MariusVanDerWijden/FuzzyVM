@@ -41,6 +41,7 @@ func initApp() *cli.App {
 		minTestsFlag,
 		buildFlag,
 		retestFlag,
+		execNoGen,
 	}
 	return app
 }
@@ -65,6 +66,10 @@ func mainLoop(c *cli.Context) {
 		}
 	} else if c.GlobalString(retestFlag.Name) != "" {
 		retest(c)
+	} else if c.GlobalBool(execNoGen.Name) {
+		if err := executor.Execute(dirName, outDir); err != nil {
+			panic(err)
+		}
 	} else {
 		generatorLoop(c)
 	}
