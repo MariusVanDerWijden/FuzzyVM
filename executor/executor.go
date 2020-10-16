@@ -89,6 +89,10 @@ func ExecuteFullTest(dirName, outDir, filename string, doPurge bool) error {
 	if err != nil {
 		return err
 	}
+	return verifyAndPurge(traceFile, testName, outDir, testFile, outputs, doPurge)
+}
+
+func verifyAndPurge(traceFile, testName, outDir, testFile string, outputs [][]byte, doPurge bool) error {
 	if !verify(traceFile, outputs) {
 		fmt.Printf("Test %v failed, dumping\n", testName)
 		if err := dump(testName, outDir, vms, outputs); err != nil {
@@ -106,23 +110,16 @@ func ExecuteFullTest(dirName, outDir, filename string, doPurge bool) error {
 	return nil
 }
 
-// executeTest executes a state test
+// executeTest executes a state test.
 func executeTest(testName string) ([][]byte, error) {
 	var buf [][]byte
-	//var buffer bytes.Buffer
+	var buffer bytes.Buffer
 	for _, vm := range vms {
-		b, err := vm.RunStateTestBatch([]string{testName})
-		if err != nil {
+		buffer.Reset()
+		if _, err := vm.RunStateTest(testName, &buffer, false); err != nil {
 			return nil, err
 		}
-		buf = append(buf, b[0])
-		/*
-			buffer.Reset()
-			if _, err := vm.RunStateTest(testName, &buffer, false); err != nil {
-				return nil, err
-			}
-			buf = append(buf, buffer.Bytes())
-		*/
+		buf = append(buf, buffer.Bytes())
 	}
 	return buf, nil
 }

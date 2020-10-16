@@ -43,9 +43,9 @@ func Fuzz(data []byte) int {
 	testMaker, _ := generator.GenerateProgram(f)
 	name := randTestName(data)
 	// Execute the test and write out the resulting trace
-	traceFile := setupTrace(name)
-	defer traceFile.Close()
-	if err := testMaker.Fill(traceFile); err != nil {
+	// traceFile := setupTrace(name)
+	// defer traceFile.Close()
+	if err := testMaker.Fill(nil); err != nil {
 		panic(err)
 	}
 	// Save the test

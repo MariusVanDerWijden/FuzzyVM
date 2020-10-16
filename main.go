@@ -104,7 +104,7 @@ func generatorLoop(c *cli.Context) {
 		fmt.Println("Starting generator")
 		cmd := startGenerator(genProc)
 		// Sleep a bit to ensure some tests have been generated.
-		time.Sleep(time.Second)
+		time.Sleep(5 * time.Second)
 		go func() {
 			for {
 				fmt.Println("Starting executor")
