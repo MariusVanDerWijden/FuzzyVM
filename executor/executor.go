@@ -109,13 +109,20 @@ func ExecuteFullTest(dirName, outDir, filename string, doPurge bool) error {
 // executeTest executes a state test
 func executeTest(testName string) ([][]byte, error) {
 	var buf [][]byte
-	var buffer bytes.Buffer
+	//var buffer bytes.Buffer
 	for _, vm := range vms {
-		buffer.Reset()
-		if _, err := vm.RunStateTest(testName, &buffer, false); err != nil {
+		b, err := vm.RunStateTestBatch([]string{testName})
+		if err != nil {
 			return nil, err
 		}
-		buf = append(buf, buffer.Bytes())
+		buf = append(buf, b[0])
+		/*
+			buffer.Reset()
+			if _, err := vm.RunStateTest(testName, &buffer, false); err != nil {
+				return nil, err
+			}
+			buf = append(buf, buffer.Bytes())
+		*/
 	}
 	return buf, nil
 }
