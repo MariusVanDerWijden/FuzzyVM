@@ -31,7 +31,7 @@ var (
 	concurrencyLimit = 10
 )
 
-// Execute runs all tests in `dirName` and saves crashers in `outDir`
+// ExecuteBatch runs all tests in `dirName` in batches and saves crashers in `outDir`
 func ExecuteBatch(dirName, outDir string) error {
 	infos, err := ioutil.ReadDir(dirName)
 	if err != nil {
@@ -71,6 +71,8 @@ func ExecuteBatch(dirName, outDir string) error {
 	}
 }
 
+// ExecuteFullBatch executes a batch of tests and verifies the outputs.
+// If doPurge is specified the tests are deleted if executed correctly.
 func ExecuteFullBatch(dirName, outDir string, filenames []string, doPurge bool) error {
 	var (
 		testFiles  []string
