@@ -67,7 +67,7 @@ func mainLoop(c *cli.Context) {
 	} else if c.GlobalString(retestFlag.Name) != "" {
 		retest(c)
 	} else if c.GlobalBool(execNoGen.Name) {
-		if err := executor.Execute(dirName, outDir); err != nil {
+		if err := executor.ExecuteBatch(dirName, outDir); err != nil {
 			panic(err)
 		}
 	} else {
@@ -103,14 +103,15 @@ func generatorLoop(c *cli.Context) {
 	for {
 		fmt.Println("Starting generator")
 		cmd := startGenerator(genProc)
-		// Sleep a bit to ensure some tests have been generated.
-		time.Sleep(5 * time.Second)
 		go func() {
 			for {
+				// Sleep a bit to ensure some tests have been generated.
+				time.Sleep(30 * time.Second)
 				fmt.Println("Starting executor")
-				if err := executor.Execute(dirName, outDir); err != nil {
+				if err := executor.ExecuteBatch(dirName, outDir); err != nil {
 					errChan <- err
 				}
+				errChan <- nil
 			}
 		}()
 		go watcher(cmd, errChan, maxTests)
@@ -152,7 +153,7 @@ func watcher(cmd *exec.Cmd, errChan chan error, maxTests int) {
 			errChan <- err
 		}
 		if len(infos) > maxTests {
-			fmt.Printf("Max tests exceeded, pausing")
+			fmt.Printf("Max tests exceeded, pausing\n")
 			cmd.Process.Signal(os.Interrupt)
 			return
 		}

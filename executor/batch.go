@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	batchSize        = 4
+	batchSize        = 20
 	concurrencyLimit = 10
 )
 
@@ -37,21 +37,27 @@ func ExecuteBatch(dirName, outDir string) error {
 	if err != nil {
 		return err
 	}
-	errChan := make(chan error)
-	limit := limiter.NewConcurrencyLimiter(concurrencyLimit)
-	meter := metrics.GetOrRegisterMeter("ticks", nil)
+	var (
+		errChan = make(chan error)
+		limit   = limiter.NewConcurrencyLimiter(concurrencyLimit)
+		meter   = metrics.GetOrRegisterMeterForced("ticks", nil)
+		tests   []string
+	)
+	// Filter tests
+	for _, info := range infos {
+		// All generated tests end in .json
+		if strings.HasSuffix(info.Name(), ".json") {
+			tests = append(tests, info.Name())
+		}
+	}
 
-	for i := 0; i < len(infos)/batchSize; i++ {
+	for i := 0; i < len(tests)/batchSize; i++ {
 		var batch []string
 		for k := 0; k < batchSize; k++ {
-			name := infos[i].Name()
-			// All generated tests end in .json
-			if strings.HasSuffix(name, ".json") {
-				batch = append(batch, name)
-			}
+			batch = append(batch, tests[i*batchSize+k])
 		}
-		fmt.Printf("Executing batch: %v of %v, %f per minute \n", i, len(infos)/batchSize, meter.Rate1())
-		meter.Mark(1)
+		fmt.Printf("Executing batch: %v of %v, with %v tests %f per minute \n", i, len(tests)/batchSize, len(batch), meter.Rate1())
+		meter.Mark(int64(len(batch)))
 		job := func() {
 			if err := ExecuteFullBatch(dirName, outDir, batch, true); err != nil {
 				err := errors.Wrap(err, fmt.Sprintf("in batch %v:", i))

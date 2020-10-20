@@ -49,7 +49,7 @@ func Execute(dirName, outDir string) error {
 	}
 	errChan := make(chan error)
 	limit := limiter.NewConcurrencyLimiter(10)
-	meter := metrics.GetOrRegisterMeter("ticks", nil)
+	meter := metrics.GetOrRegisterMeterForced("ticks", nil)
 
 	for i, info := range infos {
 		// All generated tests end in .json
@@ -101,7 +101,8 @@ func verifyAndPurge(traceFile, testName, outDir, testFile string, outputs [][]by
 	} else {
 		if doPurge {
 			if err := purge(testFile, traceFile); err != nil {
-				return err
+				// Ignore purging errors
+				fmt.Printf("Purging failed: %v\n", err)
 			}
 		} else {
 			printOutputs(outputs)

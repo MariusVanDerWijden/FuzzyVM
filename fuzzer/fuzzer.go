@@ -52,9 +52,9 @@ func Fuzz(data []byte) int {
 	test := testMaker.ToGeneralStateTest(name)
 	storeTest(test, name)
 	if f.UsedUp() {
-		return -1
+		return 0
 	}
-	return 0
+	return 1
 }
 
 func setupTrace(name string) *os.File {
