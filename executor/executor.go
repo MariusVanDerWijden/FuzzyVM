@@ -39,6 +39,7 @@ var (
 		evms.NewBesuVM("/home/matematik/ethereum/besu/ethereum/evmtool/build/install/evmtool/bin/evm"),
 		evms.NewTurboGethEVM("/home/matematik/ethereum/FuzzyVM/vms/turbogeth-evm"),
 	}
+	PrintTrace = true
 )
 
 // Execute runs all tests in `dirName` and saves crashers in `outDir`
@@ -104,7 +105,7 @@ func verifyAndPurge(traceFile, testName, outDir, testFile string, outputs [][]by
 				// Ignore purging errors
 				fmt.Printf("Purging failed: %v\n", err)
 			}
-		} else {
+		} else if PrintTrace {
 			printOutputs(outputs)
 		}
 	}

@@ -47,4 +47,8 @@ var (
 		Usage: "Rerun the specified test",
 		Value: "",
 	}
+	benchFlag = cli.IntFlag{
+		Name:  "bench",
+		Usage: "Number of tests that should be benched",
+	}
 )

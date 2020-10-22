@@ -108,7 +108,7 @@ func ExecuteFullBatch(dirName, outDir string, filenames []string, doPurge bool) 
 		for k := range outputs {
 			batch = append(batch, outputs[k][i])
 		}
-		if err := verifyAndPurge(traceFiles[i], testNames[i], outDir, testFiles[i], batch, true); err != nil {
+		if err := verifyAndPurge(traceFiles[i], testNames[i], outDir, testFiles[i], batch, doPurge); err != nil {
 			return err
 		}
 	}

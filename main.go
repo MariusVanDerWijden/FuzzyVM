@@ -42,6 +42,7 @@ func initApp() *cli.App {
 		buildFlag,
 		retestFlag,
 		execNoGen,
+		benchFlag,
 	}
 	return app
 }
@@ -70,6 +71,8 @@ func mainLoop(c *cli.Context) {
 		if err := executor.ExecuteBatch(dirName, outDir); err != nil {
 			panic(err)
 		}
+	} else if c.GlobalInt(benchFlag.Name) != 0 {
+		RunFullBench(c.GlobalInt(benchFlag.Name))
 	} else {
 		generatorLoop(c)
 	}
