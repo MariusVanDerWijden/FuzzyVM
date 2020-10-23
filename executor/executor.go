@@ -112,8 +112,8 @@ func verifyAndPurge(traceFile, testName, outDir, testFile string, outputs [][]by
 	return nil
 }
 
-// executeTest executes a state test.
-func executeTest(testName string) ([][]byte, error) {
+// ExecuteTest executes a state test.
+func ExecuteTest(testName string) ([][]byte, error) {
 	var buf [][]byte
 	var buffer bytes.Buffer
 	for _, vm := range vms {
@@ -126,8 +126,8 @@ func executeTest(testName string) ([][]byte, error) {
 	return buf, nil
 }
 
-// verify checks if the traces match the default trace.
-func verify(traceName string, outputs [][]byte) bool {
+// Verify checks if the traces match the default trace.
+func Verify(traceName string, outputs [][]byte) bool {
 	var ioReaders []io.Reader
 	for _, out := range outputs {
 		ioReaders = append(ioReaders, bytes.NewReader(out))
