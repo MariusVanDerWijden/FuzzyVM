@@ -33,11 +33,11 @@ import (
 
 var (
 	vms = []evms.Evm{
-		evms.NewGethEVM("/home/matematik/ethereum/FuzzyVM/vms/geth-evm"),
-		evms.NewParityVM("/home/matematik/ethereum/FuzzyVM/vms/openethereum-evm"),
-		evms.NewNethermindVM("/home/matematik/ethereum/FuzzyVM/vms/nethtest"),
+		//evms.NewGethEVM("/home/matematik/ethereum/FuzzyVM/vms/geth-evm"),
+		//evms.NewParityVM("/home/matematik/ethereum/FuzzyVM/vms/openethereum-evm"),
+		//evms.NewNethermindVM("/home/matematik/ethereum/FuzzyVM/vms/nethtest"),
 		evms.NewBesuVM("/home/matematik/ethereum/besu/ethereum/evmtool/build/install/evmtool/bin/evm"),
-		evms.NewTurboGethEVM("/home/matematik/ethereum/FuzzyVM/vms/turbogeth-evm"),
+		//evms.NewTurboGethEVM("/home/matematik/ethereum/FuzzyVM/vms/turbogeth-evm"),
 	}
 	PrintTrace = true
 )
@@ -86,7 +86,7 @@ func ExecuteFullTest(dirName, outDir, filename string, doPurge bool) error {
 		testName  = strings.TrimRight(filename, ".json")
 		traceFile = fmt.Sprintf("%v/%v-trace.jsonl", dirName, testName)
 	)
-	outputs, err := executeTest(testFile)
+	outputs, err := ExecuteTest(testFile)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func ExecuteFullTest(dirName, outDir, filename string, doPurge bool) error {
 }
 
 func verifyAndPurge(traceFile, testName, outDir, testFile string, outputs [][]byte, doPurge bool) error {
-	if !verify(traceFile, outputs) {
+	if !Verify(traceFile, outputs) {
 		fmt.Printf("Test %v failed, dumping\n", testName)
 		if err := dump(testName, outDir, vms, outputs); err != nil {
 			return err
@@ -112,8 +112,8 @@ func verifyAndPurge(traceFile, testName, outDir, testFile string, outputs [][]by
 	return nil
 }
 
-// executeTest executes a state test.
-func executeTest(testName string) ([][]byte, error) {
+// ExecuteTest executes a state test.
+func ExecuteTest(testName string) ([][]byte, error) {
 	var buf [][]byte
 	var buffer bytes.Buffer
 	for _, vm := range vms {
@@ -126,8 +126,8 @@ func executeTest(testName string) ([][]byte, error) {
 	return buf, nil
 }
 
-// verify checks if the traces match the default trace.
-func verify(traceName string, outputs [][]byte) bool {
+// Verify checks if the traces match the default trace.
+func Verify(traceName string, outputs [][]byte) bool {
 	var ioReaders []io.Reader
 	for _, out := range outputs {
 		ioReaders = append(ioReaders, bytes.NewReader(out))
