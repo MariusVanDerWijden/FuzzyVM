@@ -35,14 +35,15 @@ var (
 	sk                = hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
 	recursionLevel    = 0
 	maxRecursionLevel = 10
+	minJumpDistance   = 10
 )
 
 // GenerateProgram creates a new evm program and returns
 // a gstMaker based on it as well as its program code.
 func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 	var (
-		p        = program.NewProgram()
-		jumpdest = uint64(0)
+		p         = program.NewProgram()
+		jumptable = NewJumptable(uint64(minJumpDistance))
 	)
 
 	// Run for counter rounds
@@ -61,22 +62,33 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			}
 		case 1:
 			// Set a jumpdest
-			jumpdest = p.Jumpdest()
+			jumptable.Push(p.Jumpdest(), p.Label())
 		case 2:
 			// Set a jumpdest label
-			jumpdest = p.Label()
+			jumptable.Push(p.Label(), p.Label())
 		case 3:
 			// Set the jumpdest randomly
-			jumpdest = f.Uint64()
+			jumptable.Push(uint64(f.Uint16()), p.Label())
 		case 4:
 			// Push the jumpdest on the stack
+			jumpdest := jumptable.Pop(p.Label())
 			p.Push(jumpdest)
 		case 5:
-			// Jump to a label (currently deactivated)
-			// p.Jump(jumpdest)
+			// Jump to a label
+			jumpdest := jumptable.Pop(p.Label())
+			p.Jump(jumpdest)
 		case 6:
-			// Jump to a label (currently deactivated)
-			// p.JumpIf(jumpdest, f.Bool())
+			// Jumpi to a label
+			var (
+				jumpdest   = jumptable.Pop(p.Label())
+				shouldJump = f.Bool()
+				condition  = big.NewInt(0)
+			)
+			if shouldJump {
+				condition = f.BigInt()
+			}
+			// jumps if condition != 0
+			p.JumpIf(jumpdest, condition)
 		case 7:
 			// Copy a part of memory into storage
 			var (
@@ -137,17 +149,18 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			p.CreateAndCall(code, isCreate2, callOp)
 			// Decreasing recursion level generates to heavy test cases,
 			// so once we reach maxRecursionLevel we don't create new CreateAndCalls.
-			//recursionLevel--
+
+			// recursionLevel--
 		case 14:
 			// Call a random address
 			c := precompiles.CallObj{
-				Gas:       f.BigInt(),
+				Gas:       f.BigInt16(),
 				Address:   common.BytesToAddress(f.ByteSlice(20)),
-				Value:     f.BigInt(),
-				InOffset:  f.Uint32(),
-				InSize:    f.Uint32(),
-				OutOffset: f.Uint32(),
-				OutSize:   f.Uint32(),
+				Value:     f.BigInt16(),
+				InOffset:  uint32(f.Uint16()),
+				InSize:    uint32(f.Uint16()),
+				OutOffset: uint32(f.Uint16()),
+				OutSize:   uint32(f.Uint16()),
 			}
 			precompiles.CallRandomizer(p, f, c)
 		case 15:

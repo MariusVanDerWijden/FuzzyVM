@@ -31,7 +31,10 @@ import (
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
 )
 
-var outputDir = "out"
+var (
+	outputDir   = "out"
+	shouldTrace = false
+)
 
 // Fuzz is the entry point for go-fuzz
 func Fuzz(data []byte) int {
@@ -43,9 +46,12 @@ func Fuzz(data []byte) int {
 	testMaker, _ := generator.GenerateProgram(f)
 	name := randTestName(data)
 	// Execute the test and write out the resulting trace
-	// traceFile := setupTrace(name)
-	// defer traceFile.Close()
-	if err := testMaker.Fill(nil); err != nil {
+	var traceFile *os.File
+	if shouldTrace {
+		traceFile = setupTrace(name)
+		defer traceFile.Close()
+	}
+	if err := testMaker.Fill(traceFile); err != nil {
 		panic(err)
 	}
 	// Save the test

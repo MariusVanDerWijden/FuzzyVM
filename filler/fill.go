@@ -79,6 +79,12 @@ func (f *Filler) BigInt() *big.Int {
 	return big.NewInt(int64(i))
 }
 
+// BigInt16 returns a new big int in [0, 2^16)
+func (f *Filler) BigInt16() *big.Int {
+	i := f.Uint16()
+	return big.NewInt(int64(i))
+}
+
 // ByteSlice returns a byteslice with `items` values.
 func (f *Filler) ByteSlice(items int) []byte {
 	// TODO (MariusVanDerWijden) this can be done way more efficiently

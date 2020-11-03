@@ -25,7 +25,7 @@ import (
 )
 
 func TestGenerator(t *testing.T) {
-	inputEscaped := "0\xa5"
+	inputEscaped := "\x73"
 	input := []byte(inputEscaped)
 	filler := filler.NewFiller(input)
 	GenerateProgram(filler)
@@ -44,4 +44,5 @@ func TestRuntime(t *testing.T) {
 	if time.Since(testStart) > 10*time.Second {
 		t.Error("Tests took too long to generate")
 	}
+	t.Fail()
 }

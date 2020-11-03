@@ -33,11 +33,11 @@ import (
 
 var (
 	vms = []evms.Evm{
-		//evms.NewGethEVM("/home/matematik/ethereum/FuzzyVM/vms/geth-evm"),
-		//evms.NewParityVM("/home/matematik/ethereum/FuzzyVM/vms/openethereum-evm"),
-		//evms.NewNethermindVM("/home/matematik/ethereum/FuzzyVM/vms/nethtest"),
+		evms.NewGethEVM("/home/matematik/ethereum/FuzzyVM/vms/geth-evm"),
+		evms.NewParityVM("/home/matematik/ethereum/FuzzyVM/vms/openethereum-evm"),
+		evms.NewNethermindVM("/home/matematik/ethereum/FuzzyVM/vms/nethtest"),
 		evms.NewBesuVM("/home/matematik/ethereum/besu/ethereum/evmtool/build/install/evmtool/bin/evm"),
-		//evms.NewTurboGethEVM("/home/matematik/ethereum/FuzzyVM/vms/turbogeth-evm"),
+		evms.NewTurboGethEVM("/home/matematik/ethereum/FuzzyVM/vms/turbogeth-evm"),
 	}
 	PrintTrace = true
 )
@@ -160,13 +160,8 @@ func dump(filename, outdir string, vms []evms.Evm, outputs [][]byte) error {
 
 // purge deletes a test file and its corresponding trace
 func purge(filename, tracename string) error {
-	if err := os.Remove(tracename); err != nil {
-		return err
-	}
-	if err := os.Remove(filename); err != nil {
-		return err
-	}
-	return nil
+	os.Remove(tracename)
+	return os.Remove(filename)
 }
 
 // printOutputs prints out the produced traces

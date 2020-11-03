@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"time"
 
 	"gopkg.in/urfave/cli.v1"
@@ -92,8 +93,10 @@ func startBuilder() error {
 }
 
 func retest(c *cli.Context) {
-	test := c.GlobalString(retestFlag.Name)
-	executor.ExecuteFullTest(dirName, outDir, test, false)
+	p := c.GlobalString(retestFlag.Name)
+	dir := path.Dir(p)
+	test := path.Base(p)
+	executor.ExecuteFullTest(dirName, dir, test, false)
 }
 
 func generatorLoop(c *cli.Context) {
@@ -120,6 +123,7 @@ func generatorLoop(c *cli.Context) {
 		go watcher(cmd, errChan, maxTests)
 
 		err := <-errChan
+		cmd.Process.Signal(os.Kill)
 		if err != nil {
 			panic(err)
 		}
