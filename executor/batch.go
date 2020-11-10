@@ -84,6 +84,8 @@ func ExecuteFullBatch(dirName, outDir string, filenames []string, doPurge bool) 
 		testFiles  []string
 		testNames  []string
 		traceFiles []string
+		outputs    [][][]byte
+		err        error
 	)
 	for _, f := range filenames {
 		var (
@@ -96,7 +98,11 @@ func ExecuteFullBatch(dirName, outDir string, filenames []string, doPurge bool) 
 		traceFiles = append(traceFiles, traceFile)
 	}
 
-	outputs, err := executeTestBatch(testFiles)
+	if ParallelEVMS {
+		outputs, err = executeTestBatchParallel(testFiles)
+	} else {
+		outputs, err = executeTestBatch(testFiles)
+	}
 	if err != nil {
 		return err
 	}

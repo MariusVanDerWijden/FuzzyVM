@@ -27,6 +27,7 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/MariusVanDerWijden/FuzzyVM/benchmark"
 	"github.com/MariusVanDerWijden/FuzzyVM/executor"
 )
 
@@ -73,7 +74,7 @@ func mainLoop(c *cli.Context) {
 			panic(err)
 		}
 	} else if c.GlobalInt(benchFlag.Name) != 0 {
-		RunFullBench(c.GlobalInt(benchFlag.Name))
+		benchmark.RunFullBench(c.GlobalInt(benchFlag.Name))
 	} else {
 		generatorLoop(c)
 	}

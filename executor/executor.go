@@ -39,7 +39,8 @@ var (
 		evms.NewBesuVM("/home/matematik/ethereum/besu/ethereum/evmtool/build/install/evmtool/bin/evm"),
 		evms.NewTurboGethEVM("/home/matematik/ethereum/FuzzyVM/vms/turbogeth-evm"),
 	}
-	PrintTrace = true
+	PrintTrace   = true
+	ParallelEVMS = false
 )
 
 // Execute runs all tests in `dirName` and saves crashers in `outDir`
@@ -85,8 +86,14 @@ func ExecuteFullTest(dirName, outDir, filename string, doPurge bool) error {
 		testFile  = fmt.Sprintf("%v/%v", dirName, filename)
 		testName  = strings.TrimRight(filename, ".json")
 		traceFile = fmt.Sprintf("%v/%v-trace.jsonl", dirName, testName)
+		outputs   [][]byte
+		err       error
 	)
-	outputs, err := ExecuteTest(testFile)
+	if ParallelEVMS {
+		outputs, err = executeTestParallel(testFile)
+	} else {
+		outputs, err = ExecuteTest(testFile)
+	}
 	if err != nil {
 		return err
 	}
