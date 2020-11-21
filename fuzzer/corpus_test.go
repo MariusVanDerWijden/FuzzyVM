@@ -1,0 +1,67 @@
+// Copyright 2020 Marius van der Wijden
+// This file is part of the fuzzy-vm library.
+//
+// The fuzzy-vm library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The fuzzy-vm library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the fuzzy-vm library. If not, see <http://www.gnu.org/licenses/>.
+
+package fuzzer
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/korovkin/limiter"
+)
+
+func TestCreateCorpus(t *testing.T) {
+	res, err := CreateNewTest()
+	if err != nil {
+		t.Error(err)
+	}
+	t.Error(len(res))
+}
+
+func TestCreateSpecific(t *testing.T) {
+	b := make([]byte, 200)
+	res, err := createTest(b)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Error(len(res))
+}
+
+func TestCreateMaxTest(t *testing.T) {
+	max := 0
+	i := 0
+	limit := limiter.NewConcurrencyLimiter(8)
+	for {
+		fn := func() {
+			res, err := CreateNewTest()
+			if err != nil {
+				t.Error(err)
+			}
+			if len(res) > max {
+				max = len(res)
+				fmt.Printf("Max: %v\n", max)
+			}
+			i++
+			fmt.Printf("%v: %v\n", i, len(res))
+		}
+		limit.Execute(fn)
+	}
+}
+
+func TestSample(t *testing.T) {
+	res := SampleLengthCorpus(8)
+	t.Fatalf("%v", res)
+}
