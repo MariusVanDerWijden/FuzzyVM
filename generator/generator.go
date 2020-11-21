@@ -96,6 +96,7 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 				memSize   = int(f.Uint16())
 				startSlot = int(f.Uint16())
 			)
+			// TODO MSTORE currently uses too much gas
 			p.MemToStorage(memStart, memSize, startSlot)
 		case 8:
 			// Store data into memory

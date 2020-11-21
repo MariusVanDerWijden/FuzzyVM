@@ -41,6 +41,7 @@ var (
 	}
 	PrintTrace   = true
 	ParallelEVMS = false
+	threadlimit  = 8
 )
 
 // Execute runs all tests in `dirName` and saves crashers in `outDir`
@@ -50,7 +51,10 @@ func Execute(dirName, outDir string) error {
 		return err
 	}
 	errChan := make(chan error)
-	limit := limiter.NewConcurrencyLimiter(10)
+	if ParallelEVMS {
+		threadlimit = 1
+	}
+	limit := limiter.NewConcurrencyLimiter(threadlimit)
 	meter := metrics.GetOrRegisterMeterForced("ticks", nil)
 
 	for i, info := range infos {

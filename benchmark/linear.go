@@ -65,31 +65,31 @@ func execution(N int) (time.Duration, error) {
 	return time.Since(start), nil
 }
 
-// linear runs N tests in sequence.
-func linear(N int) (time.Duration, error) {
+// single runs N tests in sequence.
+func single(N int) (time.Duration, error) {
 	evms.Docker = false
-	return execLinearMultiple(N, false)
+	return execSingleLinear(N, false)
 }
 
-// linearBatch runs a batch of N tests.
-func linearBatch(N int) (time.Duration, error) {
+// singleBatch runs a batch of N tests.
+func singleBatch(N int) (time.Duration, error) {
 	evms.Docker = false
-	return execLinearMultiple(N, true)
+	return execSingleLinear(N, true)
 }
 
-// linearDocker runs N tests in sequence on a docker container.
-func linearDocker(N int) (time.Duration, error) {
+// singleDocker runs N tests in sequence on a docker container.
+func singleDocker(N int) (time.Duration, error) {
 	evms.Docker = true
-	return execLinearMultiple(N, false)
+	return execSingleLinear(N, false)
 }
 
-// linearBatchDocker runs a batch of N tests on a docker container.
-func linearBatchDocker(N int) (time.Duration, error) {
+// singleBatchDocker runs a batch of N tests on a docker container.
+func singleBatchDocker(N int) (time.Duration, error) {
 	evms.Docker = true
-	return execLinearMultiple(N, true)
+	return execSingleLinear(N, true)
 }
 
-func execLinearMultiple(N int, batch bool) (time.Duration, error) {
+func execSingleLinear(N int, batch bool) (time.Duration, error) {
 	outDir, crashers, err := createTempDirs()
 	if err != nil {
 		return time.Nanosecond, err

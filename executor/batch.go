@@ -28,7 +28,7 @@ import (
 
 var (
 	batchSize        = 20
-	concurrencyLimit = 10
+	concurrencyLimit = 8
 )
 
 // ExecuteBatch runs all tests in `dirName` in batches and saves crashers in `outDir`
@@ -37,9 +37,13 @@ func ExecuteBatch(dirName, outDir string) error {
 	if err != nil {
 		return err
 	}
+	limitC := concurrencyLimit
+	if ParallelEVMS {
+		limitC = 1
+	}
 	var (
 		errChan = make(chan error)
-		limit   = limiter.NewConcurrencyLimiter(concurrencyLimit)
+		limit   = limiter.NewConcurrencyLimiter(limitC)
 		meter   = metrics.GetOrRegisterMeterForced("ticks", nil)
 		tests   []string
 	)

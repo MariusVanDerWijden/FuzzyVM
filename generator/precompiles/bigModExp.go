@@ -27,18 +27,39 @@ var bigModExpAddr = common.HexToAddress("0x5")
 type bigModExpCaller struct{}
 
 func (*bigModExpCaller) call(p *program.Program, f *filler.Filler) error {
-	// TODO (Marius van der Wijden) create proper input
-	input := f.ByteSlice(96)
+	base := f.ByteSlice256()
+	exp := f.ByteSlice256()
+	mod := f.ByteSlice256()
+	lBase := common.LeftPadBytes(int32ToByte(len(base)), 32)
+	lExp := common.LeftPadBytes(int32ToByte(len(exp)), 32)
+	lMod := common.LeftPadBytes(int32ToByte(len(mod)), 32)
+	var data []byte
+	data = append(data, lBase...)
+	data = append(data, lExp...)
+	data = append(data, lMod...)
+	data = append(data, base...)
+	data = append(data, exp...)
+	data = append(data, mod...)
+	p.Mstore(data, 0)
 	c := CallObj{
 		Gas:       f.BigInt(),
 		Address:   bigModExpAddr,
 		InOffset:  0,
-		InSize:    96,
+		InSize:    uint32(len(data)),
 		OutOffset: 0,
 		OutSize:   64,
 		Value:     f.BigInt(),
 	}
-	p.Mstore(input, 0)
 	CallRandomizer(p, f, c)
 	return nil
+}
+
+func int32ToByte(a int) []byte {
+	au := uint32(a)
+	res := make([]byte, 4)
+	res[0] = byte(au)
+	res[1] = byte(au >> 8)
+	res[2] = byte(au >> 16)
+	res[3] = byte(au >> 24)
+	return res
 }
