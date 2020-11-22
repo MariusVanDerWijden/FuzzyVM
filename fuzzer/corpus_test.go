@@ -24,7 +24,7 @@ import (
 )
 
 func TestCreateCorpus(t *testing.T) {
-	res, err := CreateNewTest()
+	res, err := CreateNewCorpusElement()
 	if err != nil {
 		t.Error(err)
 	}
@@ -46,16 +46,15 @@ func TestCreateMaxTest(t *testing.T) {
 	limit := limiter.NewConcurrencyLimiter(8)
 	for {
 		fn := func() {
-			res, err := CreateNewTest()
+			res, err := CreateNewCorpusElement()
 			if err != nil {
 				t.Error(err)
 			}
 			if len(res) > max {
 				max = len(res)
-				fmt.Printf("Max: %v\n", max)
 			}
 			i++
-			fmt.Printf("%v: %v\n", i, len(res))
+			fmt.Printf("%v: %v \t %v \n", i, len(res), max)
 		}
 		limit.Execute(fn)
 	}
