@@ -33,7 +33,7 @@ func (*bn256Caller) call(p *program.Program, f *filler.Filler) error {
 	k2 := f.BigInt()
 	point2 := new(bn256.G1).ScalarBaseMult(k2)
 	c := CallObj{
-		Gas:       f.BigInt(),
+		Gas:       f.GasInt(),
 		Address:   bn256addAddr,
 		InOffset:  0,
 		InSize:    128,

@@ -63,7 +63,7 @@ func (*blake2fCaller) call(p *program.Program, f *filler.Filler) error {
 	}
 
 	c := CallObj{
-		Gas:       f.BigInt(),
+		Gas:       f.GasInt(),
 		Address:   blake2fAddr,
 		InOffset:  0,
 		InSize:    213,

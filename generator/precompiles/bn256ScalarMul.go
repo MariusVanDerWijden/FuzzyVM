@@ -32,7 +32,7 @@ func (*bn256MulCaller) call(p *program.Program, f *filler.Filler) error {
 	point := new(bn256.G1).ScalarBaseMult(k)
 	scalar := f.BigInt()
 	c := CallObj{
-		Gas:       f.BigInt(),
+		Gas:       f.GasInt(),
 		Address:   bn256mulAddr,
 		InOffset:  0,
 		InSize:    96,

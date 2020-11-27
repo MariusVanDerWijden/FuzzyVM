@@ -42,7 +42,7 @@ func (*bigModExpCaller) call(p *program.Program, f *filler.Filler) error {
 	data = append(data, mod...)
 	p.Mstore(data, 0)
 	c := CallObj{
-		Gas:       f.BigInt(),
+		Gas:       f.GasInt(),
 		Address:   bigModExpAddr,
 		InOffset:  0,
 		InSize:    uint32(len(data)),

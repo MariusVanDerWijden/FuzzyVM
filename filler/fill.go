@@ -73,13 +73,30 @@ func (f *Filler) Read(b []byte) (n int, err error) {
 	return len(b), nil
 }
 
-// BigInt returns a new big int in [0, 2^32)
+// BigInt returns a new big int in [0, 2^32).
 func (f *Filler) BigInt() *big.Int {
 	i := f.Uint32()
 	return big.NewInt(int64(i))
 }
 
-// BigInt16 returns a new big int in [0, 2^16)
+// GasInt returns a new big int to be used as a gas value.
+// With probability 253/255 its in [0, 20.000.000].
+// With probability 1/255 its in [0, 2^32].
+// With probability 1/255 its huge.
+func (f *Filler) GasInt() *big.Int {
+	b := f.Byte()
+	if b == 254 {
+		return f.BigInt()
+	} else if b == 255 {
+		sl := f.ByteSlice256()
+		return new(big.Int).SetBytes(sl)
+	} else {
+		b := f.BigInt()
+		return b.Mod(b, big.NewInt(20000000))
+	}
+}
+
+// BigInt16 returns a new big int in [0, 2^16).
 func (f *Filler) BigInt16() *big.Int {
 	i := f.Uint16()
 	return big.NewInt(int64(i))

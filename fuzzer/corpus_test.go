@@ -18,6 +18,7 @@ package fuzzer
 
 import (
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/korovkin/limiter"
@@ -62,6 +63,15 @@ func TestCreateMaxTest(t *testing.T) {
 }
 
 func TestSample(t *testing.T) {
-	res := SampleLengthCorpus(8)
-	t.Fatalf("%v", res)
+	results := SampleLengthCorpus(10000)
+	sort.Ints(results)
+	fmt.Printf("%v", results)
+	groups := make(map[int]int)
+	for _, res := range results {
+		groups[res]++
+	}
+	for k, r := range groups {
+		fmt.Printf("%v : %v\n", k, r)
+	}
+	panic("asdf")
 }

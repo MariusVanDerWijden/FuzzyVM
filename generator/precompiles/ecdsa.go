@@ -39,7 +39,7 @@ func (*ecdsaCaller) call(p *program.Program, f *filler.Filler) error {
 		return err
 	}
 	c := CallObj{
-		Gas:       f.BigInt(),
+		Gas:       f.GasInt(),
 		Address:   ecdsaAddr,
 		InOffset:  0,
 		InSize:    uint32(len(sig)),

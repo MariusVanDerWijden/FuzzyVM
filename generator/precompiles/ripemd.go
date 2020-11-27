@@ -29,7 +29,7 @@ type ripemdCaller struct{}
 func (*ripemdCaller) call(p *program.Program, f *filler.Filler) error {
 	data := f.ByteSlice(int(f.Uint16()))
 	c := CallObj{
-		Gas:       f.BigInt(),
+		Gas:       f.GasInt(),
 		Address:   ripemdAddr,
 		InOffset:  0,
 		InSize:    uint32(len(data)),

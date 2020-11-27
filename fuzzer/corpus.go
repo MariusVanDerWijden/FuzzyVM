@@ -29,7 +29,7 @@ import (
 var cutoff = 10
 
 func CreateNewTest() ([]byte, error) {
-	r := make([]byte, 3000000)
+	r := make([]byte, 1000000)
 	_, err := rand.Read(r)
 	if err != nil {
 		return []byte{}, err
@@ -66,7 +66,7 @@ func createTest(data []byte) ([]byte, error) {
 func SampleLengthCorpus(N int) []int {
 	res := make([]int, 0, N)
 	resChan := make(chan int, N)
-	limit := limiter.NewConcurrencyLimiter(8)
+	limit := limiter.NewConcurrencyLimiter(16)
 	for i := 0; i < N; i++ {
 		fn := func() {
 			res, err := CreateNewTest()
@@ -76,9 +76,6 @@ func SampleLengthCorpus(N int) []int {
 			resChan <- len(res)
 		}
 		limit.Execute(fn)
-		if i%10 == 0 {
-			fmt.Printf("%v: %v\n", i, len(res))
-		}
 	}
 	limit.Wait()
 	for i := 0; i < N; i++ {

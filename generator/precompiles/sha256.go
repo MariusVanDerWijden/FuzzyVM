@@ -29,7 +29,7 @@ type sha256Caller struct{}
 func (*sha256Caller) call(p *program.Program, f *filler.Filler) error {
 	data := f.ByteSlice256()
 	c := CallObj{
-		Gas:       f.BigInt(),
+		Gas:       f.GasInt(),
 		Address:   sha256Addr,
 		InOffset:  0,
 		InSize:    uint32(len(data)),

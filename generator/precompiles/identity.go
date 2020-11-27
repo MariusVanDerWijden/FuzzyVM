@@ -29,7 +29,7 @@ type identityCaller struct{}
 func (*identityCaller) call(p *program.Program, f *filler.Filler) error {
 	data := f.ByteSlice(int(f.Uint16()))
 	c := CallObj{
-		Gas:       f.BigInt(),
+		Gas:       f.GasInt(),
 		Address:   identityAddr,
 		InOffset:  0,
 		InSize:    uint32(len(data)),

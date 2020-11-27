@@ -85,7 +85,7 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 				condition  = big.NewInt(0)
 			)
 			if shouldJump {
-				condition = f.BigInt()
+				condition = f.BigInt16()
 			}
 			// jumps if condition != 0
 			p.JumpIf(jumpdest, condition)
@@ -155,7 +155,7 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 		case 14:
 			// Call a random address
 			c := precompiles.CallObj{
-				Gas:       f.BigInt16(),
+				Gas:       f.GasInt(),
 				Address:   common.BytesToAddress(f.ByteSlice(20)),
 				Value:     f.BigInt16(),
 				InOffset:  uint32(f.Uint16()),
@@ -180,7 +180,7 @@ func createGstMaker(fill *filler.Filler, code []byte) *fuzzing.GstMaker {
 		Nonce: 0,
 		// Used to be 0xffffffff, increased to prevent sender to little money exceptions
 		// see: https://gist.github.com/MariusVanDerWijden/008b91a61de4b0fb831b72c24600ef59
-		Balance: big.NewInt(0xffffffffffffff),
+		Balance: big.NewInt(0x3fffffffffffffff),
 		Storage: make(map[common.Hash]common.Hash),
 		Code:    []byte{},
 	})
@@ -193,7 +193,7 @@ func createGstMaker(fill *filler.Filler, code []byte) *fuzzing.GstMaker {
 	})
 	// Add the transaction
 	tx := &fuzzing.StTransaction{
-		GasLimit:   []uint64{12000000},
+		GasLimit:   []uint64{20000000},
 		Nonce:      0,
 		Value:      []string{randHex(fill, 4)},
 		Data:       []string{randHex(fill, 100)},

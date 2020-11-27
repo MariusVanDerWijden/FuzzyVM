@@ -42,7 +42,7 @@ func (*bn256PairingCaller) call(p *program.Program, f *filler.Filler) error {
 	}
 
 	c := CallObj{
-		Gas:       f.BigInt(),
+		Gas:       f.GasInt(),
 		Address:   bn256pairingAddr,
 		InOffset:  0,
 		InSize:    inSize,
