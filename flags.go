@@ -51,4 +51,8 @@ var (
 		Name:  "bench",
 		Usage: "Number of tests that should be benched",
 	}
+	corpusFlag = cli.IntFlag{
+		Name:  "corpus",
+		Usage: "Number of corpus elements that should be created",
+	}
 )

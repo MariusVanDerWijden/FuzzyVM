@@ -18,6 +18,7 @@
 package main
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -29,6 +30,7 @@ import (
 
 	"github.com/MariusVanDerWijden/FuzzyVM/benchmark"
 	"github.com/MariusVanDerWijden/FuzzyVM/executor"
+	"github.com/MariusVanDerWijden/FuzzyVM/fuzzer"
 )
 
 func initApp() *cli.App {
@@ -45,6 +47,7 @@ func initApp() *cli.App {
 		retestFlag,
 		execNoGen,
 		benchFlag,
+		corpusFlag,
 	}
 	return app
 }
@@ -75,6 +78,8 @@ func mainLoop(c *cli.Context) {
 		}
 	} else if c.GlobalInt(benchFlag.Name) != 0 {
 		benchmark.RunFullBench(c.GlobalInt(benchFlag.Name))
+	} else if c.GlobalInt(corpusFlag.Name) != 0 {
+		createCorpus(c.GlobalInt(corpusFlag.Name))
 	} else {
 		generatorLoop(c)
 	}
@@ -164,6 +169,27 @@ func watcher(cmd *exec.Cmd, errChan chan error, maxTests int) {
 			fmt.Printf("Max tests exceeded, pausing\n")
 			cmd.Process.Signal(os.Interrupt)
 			return
+		}
+	}
+}
+
+func createCorpus(n int) {
+	dir := "corpus"
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		if err := os.Mkdir(dir, 0777); err != nil {
+			fmt.Printf("Error while making corpus dir: %v\n", err)
+		}
+	} else if err != nil {
+		fmt.Printf("Error while using os.Stat: %v\n", err)
+	}
+	for i := 0; i < n; i++ {
+		elem, err := fuzzer.CreateNewCorpusElement()
+		if err != nil {
+			fmt.Printf("Error while creating corpus: %v\n", err)
+		}
+		filename := sha1.Sum(elem)
+		if err := ioutil.WriteFile(string(filename[:]), elem, 0755); err != nil {
+			fmt.Printf("Error while writing corpus element: %v\n", err)
 		}
 	}
 }

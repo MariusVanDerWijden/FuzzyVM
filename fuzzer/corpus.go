@@ -28,7 +28,8 @@ import (
 
 var cutoff = 10
 
-func CreateNewTest() ([]byte, error) {
+// CreateNewCorpusElement creates a new corpus element.
+func CreateNewCorpusElement() ([]byte, error) {
 	r := make([]byte, 1000000)
 	_, err := rand.Read(r)
 	if err != nil {
@@ -69,7 +70,7 @@ func SampleLengthCorpus(N int) []int {
 	limit := limiter.NewConcurrencyLimiter(16)
 	for i := 0; i < N; i++ {
 		fn := func() {
-			res, err := CreateNewTest()
+			res, err := CreateNewCorpusElement()
 			if err != nil {
 				fmt.Println("Error")
 			}
