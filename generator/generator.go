@@ -109,7 +109,7 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			// Store data in storage (currently deactivated)
 			/*
 				var (
-					data     = f.ByteSlice256()
+					data := make([]byte, f.Byte()%32)
 					slot = f.Uint32()
 				)
 				p.Sstore(slot, data)
@@ -166,6 +166,9 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			precompiles.CallRandomizer(p, f, c)
 		case 15:
 			precompiles.CallPrecompile(p, f)
+		case 16:
+			b := make([]byte, f.Byte()%32)
+			p.Push(b)
 		}
 	}
 	code := jumptable.InsertJumps(p.Bytecode())
