@@ -106,14 +106,12 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			)
 			p.Mstore(data, memStart)
 		case 9:
-			// Store data in storage (currently deactivated)
-			/*
-				var (
-					data := make([]byte, f.Byte()%32)
-					slot = f.Uint32()
-				)
-				p.Sstore(slot, data)
-			*/
+			// Store data in storage
+			var (
+				data = make([]byte, f.Byte()%32)
+				slot = f.Uint32()
+			)
+			p.Sstore(slot, data)
 		case 10:
 			// Loads data into memory and returns it
 			p.ReturnData(f.ByteSlice256())
