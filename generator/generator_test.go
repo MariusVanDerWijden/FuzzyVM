@@ -17,6 +17,7 @@
 package generator
 
 import (
+	"crypto/rand"
 	"fmt"
 	"testing"
 	"time"
@@ -25,7 +26,7 @@ import (
 )
 
 func TestGenerator(t *testing.T) {
-	inputEscaped := "\x73"
+	inputEscaped := "\x83"
 	input := []byte(inputEscaped)
 	filler := filler.NewFiller(input)
 	GenerateProgram(filler)
@@ -45,4 +46,11 @@ func TestRuntime(t *testing.T) {
 		t.Error("Tests took too long to generate")
 	}
 	t.Fail()
+}
+
+func TestRandomGenerator(t *testing.T) {
+	input := make([]byte, 100000)
+	rand.Read(input)
+	filler := filler.NewFiller(input)
+	GenerateProgram(filler)
 }

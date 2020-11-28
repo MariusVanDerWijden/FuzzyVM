@@ -31,6 +31,8 @@ import (
 	"github.com/MariusVanDerWijden/FuzzyVM/benchmark"
 	"github.com/MariusVanDerWijden/FuzzyVM/executor"
 	"github.com/MariusVanDerWijden/FuzzyVM/fuzzer"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/pkg/profile"
 )
 
 func initApp() *cli.App {
@@ -77,6 +79,7 @@ func mainLoop(c *cli.Context) {
 			panic(err)
 		}
 	} else if c.GlobalInt(benchFlag.Name) != 0 {
+		defer profile.Start(profile.TraceProfile).Stop()
 		benchmark.RunFullBench(c.GlobalInt(benchFlag.Name))
 	} else if c.GlobalInt(corpusFlag.Name) != 0 {
 		createCorpus(c.GlobalInt(corpusFlag.Name))
@@ -188,7 +191,7 @@ func createCorpus(n int) {
 			fmt.Printf("Error while creating corpus: %v\n", err)
 		}
 		filename := sha1.Sum(elem)
-		if err := ioutil.WriteFile(string(filename[:]), elem, 0755); err != nil {
+		if err := ioutil.WriteFile(common.Bytes2Hex(filename[:]), elem, 0755); err != nil {
 			fmt.Printf("Error while writing corpus element: %v\n", err)
 		}
 	}

@@ -70,6 +70,7 @@ func ExecuteBatch(dirName, outDir string) error {
 		}
 		limit.Execute(job)
 	}
+	limit.Wait()
 	for {
 		select {
 		case err := <-errChan:

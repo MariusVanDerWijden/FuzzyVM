@@ -19,6 +19,8 @@ package executor
 import (
 	"bytes"
 	"sync"
+
+	"github.com/holiman/goevmlab/evms"
 )
 
 // executeTestParallel executes a tests in parallel.
@@ -77,14 +79,14 @@ func executeTestBatchParallel(tests []string) ([][][]byte, error) {
 	)
 	wg.Add(len(vms))
 	for i, vm := range vms {
-		go func() {
+		go func(vm evms.Evm, index int) {
 			b, err := vm.RunStateTestBatch(tests)
 			if err != nil {
 				errChan <- err
 			}
-			ch <- result{output: b, index: i}
+			ch <- result{output: b, index: index}
 			wg.Done()
-		}()
+		}(vm, i)
 	}
 	wg.Wait()
 	for range vms {

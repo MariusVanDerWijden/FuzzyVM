@@ -168,7 +168,7 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			precompiles.CallPrecompile(p, f)
 		}
 	}
-	code := p.Bytecode()
+	code := jumptable.InsertJumps(p.Bytecode())
 	return createGstMaker(f, code), code
 }
 

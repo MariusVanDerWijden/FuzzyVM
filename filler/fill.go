@@ -80,16 +80,12 @@ func (f *Filler) BigInt() *big.Int {
 }
 
 // GasInt returns a new big int to be used as a gas value.
-// With probability 253/255 its in [0, 20.000.000].
+// With probability 254/255 its in [0, 20.000.000].
 // With probability 1/255 its in [0, 2^32].
-// With probability 1/255 its huge.
 func (f *Filler) GasInt() *big.Int {
 	b := f.Byte()
 	if b == 254 {
 		return f.BigInt()
-	} else if b == 255 {
-		sl := f.ByteSlice256()
-		return new(big.Int).SetBytes(sl)
 	} else {
 		b := f.BigInt()
 		return b.Mod(b, big.NewInt(20000000))

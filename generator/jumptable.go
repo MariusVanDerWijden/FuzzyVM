@@ -16,6 +16,11 @@
 
 package generator
 
+import (
+	"encoding/binary"
+	"fmt"
+)
+
 type destination struct {
 	pc       uint64
 	jumpdest uint64
@@ -24,6 +29,7 @@ type destination struct {
 type Jumptable struct {
 	minDist uint64
 	dests   []destination
+	toFill  []uint64
 }
 
 // NewJumptable creates a new Jumptable with a minimum jump distance.
@@ -39,23 +45,11 @@ func (j *Jumptable) Push(pc, dest uint64) {
 	j.dests = append(j.dests, destination{pc: pc, jumpdest: dest})
 }
 
-// Pop removes a suitable destination from the jumptable.
-// If no suitable destination
+// Pop stores where a destination from the jumptable is needed.
+// Returns a full uint64 as a placeholder
 func (j *Jumptable) Pop(pc uint64) uint64 {
-	for i, dest := range j.dests {
-		// allow forward jumps
-		if pc < dest.jumpdest {
-			return j.rem(i).jumpdest
-		}
-		/*
-			// allow jump if enough instructions passed
-			if pc-dest.pc > j.minDist {
-				return j.rem(i).jumpdest
-			}
-		*/
-	}
-	// if no suitable destination found, return pc + 1
-	return pc + 1
+	j.toFill = append(j.toFill, pc)
+	return ^uint64(0)
 }
 
 func (j *Jumptable) rem(index int) destination {
@@ -63,4 +57,63 @@ func (j *Jumptable) rem(index int) destination {
 	j.dests[index] = j.dests[len(j.dests)-1]
 	j.dests = j.dests[:len(j.dests)-1]
 	return dest
+}
+
+func (j *Jumptable) InsertJumps(bytecode []byte) []byte {
+	// The destination to fill starts either at pc + 1 (JUMP)
+	// or at pc + 3
+	for _, pc := range j.toFill {
+		if pc, ok := checkCond(bytecode, pc); ok {
+			set := false
+			for i, dest := range j.dests {
+				// allow jump if enough instructions passed
+				if pc-dest.pc > j.minDist {
+					bytecode = insertJumpdest(bytecode, pc, j.rem(i).jumpdest)
+					set = true
+					break
+				}
+				// allow forward jumps
+				if pc < dest.jumpdest {
+					bytecode = insertJumpdest(bytecode, pc, j.rem(i).jumpdest)
+					set = true
+					break
+				}
+			}
+			if !set {
+				// if no suitable destination found, set jumpdest to 0
+				bytecode = insertJumpdest(bytecode, pc, 0)
+			}
+		} else {
+			fmt.Printf("%v\n", bytecode)
+			fmt.Printf("%v\n", pc)
+			fmt.Printf("%v\n", bytecode[pc])
+			panic("invalid jumpdest")
+		}
+	}
+	return bytecode
+}
+
+func checkCond(bytecode []byte, pc uint64) (uint64, bool) {
+	for i := uint64(1); i < 5; i++ {
+		if bytecode[pc+i] == bytecode[pc+i+1] &&
+			bytecode[pc+i] == bytecode[pc+i+2] &&
+			bytecode[pc+i] == bytecode[pc+i+3] &&
+			bytecode[pc+i] == bytecode[pc+i+4] &&
+			bytecode[pc+i] == bytecode[pc+i+5] &&
+			bytecode[pc+i] == bytecode[pc+i+6] &&
+			bytecode[pc+i] == bytecode[pc+i+7] &&
+			bytecode[pc+i] == byte(255) {
+			return pc + i, true
+		}
+	}
+	return 0, false
+}
+
+func insertJumpdest(bytecode []byte, pc, dest uint64) []byte {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, dest)
+	for i := uint64(0); i < 8; i++ {
+		bytecode[pc+i] = b[i]
+	}
+	return bytecode
 }
