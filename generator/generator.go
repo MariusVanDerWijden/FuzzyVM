@@ -152,9 +152,17 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			// recursionLevel--
 		case 14:
 			// Call a random address
+			var addr common.Address
+			if f.Bool() {
+				// call a precompile
+				addr = common.BigToAddress(new(big.Int).Mod(f.BigInt16(), big.NewInt(20)))
+			} else {
+				addr = common.BytesToAddress(f.ByteSlice(20))
+			}
+
 			c := precompiles.CallObj{
 				Gas:       f.GasInt(),
-				Address:   common.BytesToAddress(f.ByteSlice(20)),
+				Address:   addr,
 				Value:     f.BigInt16(),
 				InOffset:  uint32(f.Uint16()),
 				InSize:    uint32(f.Uint16()),
