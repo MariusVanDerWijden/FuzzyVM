@@ -120,7 +120,7 @@ func (f *Filler) ByteSlice(items int) []byte {
 	return b
 }
 
-// ByteSlice256 returns a byteslice with 1..256 values.
+// ByteSlice256 returns a byteslice with 0..255 values.
 func (f *Filler) ByteSlice256() []byte {
 	return f.ByteSlice(int(f.Byte()))
 }

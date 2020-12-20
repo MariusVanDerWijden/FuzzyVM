@@ -85,7 +85,7 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 				condition  = big.NewInt(0)
 			)
 			if shouldJump {
-				condition = f.BigInt16()
+				condition = f.BigInt()
 			}
 			// jumps if condition != 0
 			p.JumpIf(jumpdest, condition)
