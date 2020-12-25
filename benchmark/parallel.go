@@ -83,3 +83,12 @@ func execMultiple(N int, batch bool) (time.Duration, error) {
 	}
 	return time.Since(start), nil
 }
+
+func piping(N int) (time.Duration, error) {
+	evms.Docker = false
+	evms.PipeStrategy = true
+	executor.ParallelEVMS = false
+	d, err := execMultiple(N, false)
+	evms.PipeStrategy = false
+	return d, err
+}
