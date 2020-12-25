@@ -33,11 +33,11 @@ import (
 
 var (
 	vms = []evms.Evm{
-		evms.NewGethEVM("/home/matematik/ethereum/FuzzyVM/vms/geth-evm"),
-		evms.NewParityVM("/home/matematik/ethereum/FuzzyVM/vms/openethereum-evm"),
-		evms.NewNethermindVM("/home/matematik/ethereum/FuzzyVM/vms/nethtest"),
-		evms.NewBesuVM("/home/matematik/ethereum/besu/ethereum/evmtool/build/install/evmtool/bin/evm"),
-		evms.NewTurboGethEVM("/home/matematik/ethereum/FuzzyVM/vms/turbogeth-evm"),
+		evms.NewGethEVM("~/ethereum/FuzzyVM/vms/geth-evm"),
+		evms.NewParityVM("~/ethereum/FuzzyVM/vms/openethereum-evm"),
+		evms.NewNethermindVM("~/ethereum/FuzzyVM/vms/nethtest"),
+		evms.NewBesuVM("~/ethereum/besu/ethereum/evmtool/build/install/evmtool/bin/evm"),
+		evms.NewTurboGethEVM("~/ethereum/FuzzyVM/vms/turbogeth-evm"),
 	}
 	PrintTrace   = true
 	ParallelEVMS = false
