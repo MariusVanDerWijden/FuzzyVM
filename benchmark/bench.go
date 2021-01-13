@@ -17,7 +17,6 @@ import (
 func RunFullBench(N int) {
 	time, err := testGeneration(N)
 	// Basic building blocks
-	time, err := testGeneration(N)
 	printResult("BenchmarkTestGeneration", time, err)
 	time, err = execution(N)
 	printResult("BenchmarkExecution", time, err)
