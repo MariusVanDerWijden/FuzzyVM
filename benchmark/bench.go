@@ -102,11 +102,11 @@ func storeTest(test *fuzzing.GeneralStateTest, testName, outputDir string) error
 }
 
 func createTempDirs() (string, string, error) {
-	outputDir, err := ioutil.TempDir("", "")
+	outputDir, err := ioutil.TempDir("/home/marius.vanderwijden", "")
 	if err != nil {
 		return "", "", err
 	}
-	crashers, err := ioutil.TempDir("", "")
+	crashers, err := ioutil.TempDir("/home/marius.vanderwijden", "")
 	if err != nil {
 		return "", "", err
 	}
