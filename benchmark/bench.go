@@ -102,12 +102,20 @@ func storeTest(test *fuzzing.GeneralStateTest, testName, outputDir string) error
 }
 
 func createTempDirs() (string, string, error) {
-	outputDir, err := ioutil.TempDir("/home/marius.vanderwijden", "")
+	outputDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		return "", "", err
 	}
-	crashers, err := ioutil.TempDir("/home/marius.vanderwijden", "")
+	// set the permissions
+	if err = os.Chmod(outputDir, 0755); err != nil {
+		return "", "", err
+	}
+	crashers, err := ioutil.TempDir("", "")
 	if err != nil {
+		return "", "", err
+	}
+	// set the permissions
+	if err = os.Chmod(crashers, 0755); err != nil {
 		return "", "", err
 	}
 	return outputDir, crashers, nil
