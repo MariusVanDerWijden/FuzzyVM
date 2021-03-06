@@ -27,14 +27,14 @@ var identityAddr = common.HexToAddress("0x4")
 type identityCaller struct{}
 
 func (*identityCaller) call(p *program.Program, f *filler.Filler) error {
-	data := f.ByteSlice(int(f.Uint16()))
+	data := f.ByteSlice256()
 	c := CallObj{
 		Gas:       f.GasInt(),
 		Address:   identityAddr,
 		InOffset:  0,
 		InSize:    uint32(len(data)),
 		OutOffset: 0,
-		OutSize:   20,
+		OutSize:   uint32(len(data)),
 		Value:     f.BigInt(),
 	}
 	p.Mstore(data, 0)

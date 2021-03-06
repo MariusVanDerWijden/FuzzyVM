@@ -18,20 +18,21 @@ func RunFullBench(N int) {
 	time, err := testGeneration(N)
 	// Basic building blocks
 	printResult("BenchmarkTestGeneration", time, err)
-	time, err = execution(N)
-	printResult("BenchmarkExecution", time, err)
-	time, err = verify(N)
-	printResult("BenchmarkVerification", time, err)
-	// single thread execution
-	time, err = single(N)
-	printResult("BenchmarkSingle", time, err)
-	time, err = singleBatch(N)
-	printResult("BenchmarkSingleBatch", time, err)
-	time, err = singleDocker(N)
-	printResult("BenchmarkSingleDocker", time, err)
-	time, err = singleBatchDocker(N)
-	printResult("BenchmarkSingleBatchDocker", time, err)
-
+	/*
+		time, err = execution(N)
+		printResult("BenchmarkExecution", time, err)
+		time, err = verify(N)
+		printResult("BenchmarkVerification", time, err)
+		// single thread execution
+		time, err = single(N)
+		printResult("BenchmarkSingle", time, err)
+		time, err = singleBatch(N)
+		printResult("BenchmarkSingleBatch", time, err)
+		time, err = singleDocker(N)
+		printResult("BenchmarkSingleDocker", time, err)
+		time, err = singleBatchDocker(N)
+		printResult("BenchmarkSingleBatchDocker", time, err)
+	*/
 	// parallel execution linear evms (structure 3.1)
 	time, err = linear(N)
 	printResult("BenchmarkLinear", time, err)
@@ -54,8 +55,8 @@ func RunFullBench(N int) {
 	printResult("BenchmarkParallelBatchDocker", time, err)
 
 	// pipe strategy besu
-//	time, err = piping(N)
-//	printResult("BenchmarkPipeStrategy", time, err)
+	//	time, err = piping(N)
+	//	printResult("BenchmarkPipeStrategy", time, err)
 }
 
 func printResult(name string, time time.Duration, err error) {

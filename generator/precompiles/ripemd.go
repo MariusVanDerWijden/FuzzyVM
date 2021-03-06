@@ -27,7 +27,7 @@ var ripemdAddr = common.HexToAddress("0x3")
 type ripemdCaller struct{}
 
 func (*ripemdCaller) call(p *program.Program, f *filler.Filler) error {
-	data := f.ByteSlice(int(f.Uint16()))
+	data := f.ByteSlice256()
 	c := CallObj{
 		Gas:       f.GasInt(),
 		Address:   ripemdAddr,
