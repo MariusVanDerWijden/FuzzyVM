@@ -54,8 +54,8 @@ func RunFullBench(N int) {
 	printResult("BenchmarkParallelBatchDocker", time, err)
 
 	// pipe strategy besu
-	time, err = piping(N)
-	printResult("BenchmarkPipeStrategy", time, err)
+//	time, err = piping(N)
+//	printResult("BenchmarkPipeStrategy", time, err)
 }
 
 func printResult(name string, time time.Duration, err error) {

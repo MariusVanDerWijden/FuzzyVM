@@ -41,7 +41,7 @@ var (
 	}
 	PrintTrace   = true
 	ParallelEVMS = false
-	threadlimit  = 8
+	threadlimit  = 120
 )
 
 // Execute runs all tests in `dirName` and saves crashers in `outDir`
