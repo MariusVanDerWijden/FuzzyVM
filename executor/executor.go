@@ -35,13 +35,13 @@ var (
 	vms = []evms.Evm{
 		evms.NewGethEVM("/home/matematik/ethereum/FuzzyVM/vms/geth-evm"),
 		evms.NewParityVM("/home/matematik/ethereum/FuzzyVM/vms/openethereum-evm"),
-		evms.NewNethermindVM("/home/matematik/ethereum/FuzzyVM/vms/nethtest"),
+		//evms.NewNethermindVM("/home/matematik/ethereum/FuzzyVM/vms/nethtest"),
 		evms.NewBesuVM("/home/matematik/ethereum/besu/ethereum/evmtool/build/install/evmtool/bin/evm"),
 		evms.NewTurboGethEVM("/home/matematik/ethereum/FuzzyVM/vms/turbogeth-evm"),
 	}
 	PrintTrace   = true
 	ParallelEVMS = false
-	threadlimit  = 120
+	threadlimit  = 10
 )
 
 // Execute runs all tests in `dirName` and saves crashers in `outDir`
@@ -51,7 +51,7 @@ func Execute(dirName, outDir string) error {
 		return err
 	}
 	errChan := make(chan error)
-	if ParallelEVMS {
+	if ParallelEVMS || evms.PipeStrategy {
 		threadlimit = 1
 	}
 	limit := limiter.NewConcurrencyLimiter(threadlimit)

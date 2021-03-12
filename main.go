@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"runtime/pprof"
 	"time"
 
 	"gopkg.in/urfave/cli.v1"
@@ -67,6 +68,11 @@ func main() {
 }
 
 func mainLoop(c *cli.Context) {
+	go func() {
+		time.Sleep(2 * time.Minute)
+		file, _ := os.Create("heap_dump_fuzzyVM")
+		pprof.WriteHeapProfile(file)
+	}()
 	if c.GlobalBool(buildFlag.Name) {
 		if err := startBuilder(); err != nil {
 			panic(err)

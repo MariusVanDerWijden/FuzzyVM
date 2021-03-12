@@ -27,8 +27,8 @@ import (
 )
 
 var (
-	batchSize        = 40
-	concurrencyLimit = 128
+	batchSize        = 20
+	concurrencyLimit = 1
 )
 
 // ExecuteBatch runs all tests in `dirName` in batches and saves crashers in `outDir`
