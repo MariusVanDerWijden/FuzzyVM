@@ -118,8 +118,8 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 		case 11:
 			// Returns with offset, len
 			var (
-				offset = f.Uint32()
-				len    = f.Uint32()
+				offset = uint32(f.Uint16())
+				len    = uint32(f.Uint16())
 			)
 			p.Return(offset, len)
 		case 12:

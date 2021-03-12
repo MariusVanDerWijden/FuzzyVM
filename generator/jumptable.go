@@ -18,7 +18,6 @@ package generator
 
 import (
 	"encoding/binary"
-	"fmt"
 )
 
 type destination struct {
@@ -83,11 +82,6 @@ func (j *Jumptable) InsertJumps(bytecode []byte) []byte {
 				// if no suitable destination found, set jumpdest to 0
 				bytecode = insertJumpdest(bytecode, pc, 0)
 			}
-		} else {
-			fmt.Printf("%v\n", bytecode)
-			fmt.Printf("%v\n", pc)
-			fmt.Printf("%v\n", bytecode[pc])
-			panic("invalid jumpdest")
 		}
 	}
 	return bytecode

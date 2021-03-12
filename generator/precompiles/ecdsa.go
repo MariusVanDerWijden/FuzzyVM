@@ -38,6 +38,7 @@ func (*ecdsaCaller) call(p *program.Program, f *filler.Filler) error {
 	if err != nil {
 		return err
 	}
+	// Sig is in [R | S | V] we need it in components
 	c := CallObj{
 		Gas:       f.GasInt(),
 		Address:   ecdsaAddr,

@@ -64,12 +64,21 @@ func TestCreateMaxTest(t *testing.T) {
 func TestSample(t *testing.T) {
 	results := SampleLengthCorpus(10000)
 	sort.Ints(results)
-	fmt.Printf("%v", results)
-	groups := make(map[int]int)
+	/*
+		fmt.Printf("%v", results)
+		groups := make(map[int]int)
+		for _, res := range results {
+			groups[res]++
+		}
+		for k, r := range groups {
+			//fmt.Printf("%v : %v\n", k, r)
+		}*/
+	subgroups := make(map[int]int)
 	for _, res := range results {
-		groups[res]++
+		group := res / 500
+		subgroups[group*500]++
 	}
-	for k, r := range groups {
+	for k, r := range subgroups {
 		fmt.Printf("%v : %v\n", k, r)
 	}
 	panic("asdf")

@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"runtime/pprof"
 	"time"
 
 	"gopkg.in/urfave/cli.v1"
@@ -32,7 +33,6 @@ import (
 	"github.com/MariusVanDerWijden/FuzzyVM/executor"
 	"github.com/MariusVanDerWijden/FuzzyVM/fuzzer"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/pkg/profile"
 )
 
 func initApp() *cli.App {
@@ -68,6 +68,11 @@ func main() {
 }
 
 func mainLoop(c *cli.Context) {
+	go func() {
+		time.Sleep(2 * time.Minute)
+		file, _ := os.Create("heap_dump_fuzzyVM")
+		pprof.WriteHeapProfile(file)
+	}()
 	if c.GlobalBool(buildFlag.Name) {
 		if err := startBuilder(); err != nil {
 			panic(err)
@@ -79,7 +84,6 @@ func mainLoop(c *cli.Context) {
 			panic(err)
 		}
 	} else if c.GlobalInt(benchFlag.Name) != 0 {
-		defer profile.Start(profile.TraceProfile).Stop()
 		benchmark.RunFullBench(c.GlobalInt(benchFlag.Name))
 	} else if c.GlobalInt(corpusFlag.Name) != 0 {
 		createCorpus(c.GlobalInt(corpusFlag.Name))
