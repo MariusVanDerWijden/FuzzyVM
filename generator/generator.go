@@ -51,7 +51,7 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 	for i := 0; i < int(counter); i++ {
 		rnd := f.Byte()
 		switch rnd % 25 {
-		case 0:
+		case 0, 17, 18, 19:
 			// Just add a single opcode
 			op := ops.OpCode(f.Byte())
 			// Nethermind currently uses a different blockhash provider in the statetests,

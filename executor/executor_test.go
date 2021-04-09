@@ -19,7 +19,7 @@ package executor
 import "testing"
 
 func TestExecute(t *testing.T) {
-	err := Execute("../out", "../crashes")
+	err := Execute("../out", "../crashes", 1)
 	if err != nil {
 		t.Fail()
 	}

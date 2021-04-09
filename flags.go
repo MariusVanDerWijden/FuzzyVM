@@ -16,13 +16,22 @@
 
 package main
 
-import "gopkg.in/urfave/cli.v1"
+import (
+	"runtime"
+
+	"gopkg.in/urfave/cli.v1"
+)
 
 var (
-	genProcFlag = cli.StringFlag{
-		Name:  "gen.procs",
-		Usage: "Number of generator processes started",
-		Value: "1",
+	genThreadsFlag = cli.IntFlag{
+		Name:  "gen.threads",
+		Usage: "Number of generator threads started (default = 1)",
+		Value: 1,
+	}
+	execThreadsFlag = cli.IntFlag{
+		Name:  "exec.threads",
+		Usage: "Number of execution threads started (default = NumCPU()",
+		Value: runtime.NumCPU(),
 	}
 	maxTestsFlag = cli.IntFlag{
 		Name:  "gen.maxtests",

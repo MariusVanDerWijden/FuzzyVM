@@ -6,7 +6,6 @@ import (
 
 	"github.com/MariusVanDerWijden/FuzzyVM/executor"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
-	"github.com/holiman/goevmlab/evms"
 )
 
 // testGeneration generates N programs.
@@ -65,31 +64,17 @@ func execution(N int) (time.Duration, error) {
 	return time.Since(start), nil
 }
 
-// single runs N tests in sequence.
-func single(N int) (time.Duration, error) {
-	evms.Docker = false
-	return execSingleLinear(N, false)
+func linear(N int, threadlimit int) (time.Duration, error) {
+	return execMultiple(N, threadlimit)
 }
 
-// singleBatch runs a batch of N tests.
-func singleBatch(N int) (time.Duration, error) {
-	evms.Docker = false
-	return execSingleLinear(N, true)
+func linearDocker(N int, threadlimit int) (time.Duration, error) {
+	// evms.Docker = true
+	return execMultiple(N, threadlimit)
 }
 
-// singleDocker runs N tests in sequence on a docker container.
-func singleDocker(N int) (time.Duration, error) {
-	evms.Docker = true
-	return execSingleLinear(N, false)
-}
-
-// singleBatchDocker runs a batch of N tests on a docker container.
-func singleBatchDocker(N int) (time.Duration, error) {
-	evms.Docker = true
-	return execSingleLinear(N, true)
-}
-
-func execSingleLinear(N int, batch bool) (time.Duration, error) {
+// execMultiple creates N tests and executes them in multiple threads.
+func execMultiple(N int, threadlimit int) (time.Duration, error) {
 	outDir, crashers, err := createTempDirs()
 	if err != nil {
 		return time.Nanosecond, err
@@ -104,16 +89,8 @@ func execSingleLinear(N int, batch bool) (time.Duration, error) {
 	}
 	executor.PrintTrace = false
 	start := time.Now()
-	if batch {
-		if err := executor.ExecuteFullBatch(outDir, crashers, names, false); err != nil {
-			return time.Nanosecond, err
-		}
-	} else {
-		for _, n := range names {
-			if err := executor.ExecuteFullTest(outDir, crashers, n, false); err != nil {
-				return time.Nanosecond, err
-			}
-		}
+	if err := executor.Execute(outDir, crashers, threadlimit); err != nil {
+		return time.Nanosecond, err
 	}
 	return time.Since(start), nil
 }

@@ -35,32 +35,27 @@ var (
 	vms = []evms.Evm{
 		evms.NewGethEVM("/home/matematik/ethereum/FuzzyVM/vms/geth-evm"),
 		evms.NewParityVM("/home/matematik/ethereum/FuzzyVM/vms/openethereum-evm"),
-		//evms.NewNethermindVM("/home/matematik/ethereum/FuzzyVM/vms/nethtest"),
+		evms.NewNethermindVM("/home/matematik/ethereum/neth_test/nethermind/src/Nethermind/Nethermind.State.Test.Runner/bin/Release/netcoreapp3.1/nethtest"),
 		evms.NewBesuVM("/home/matematik/ethereum/besu/ethereum/evmtool/build/install/evmtool/bin/evm"),
-		evms.NewTurboGethEVM("/home/matematik/ethereum/FuzzyVM/vms/turbogeth-evm"),
+		evms.NewGethEVM("/home/matematik/ethereum/FuzzyVM/vms/turbogeth-evm"),
 	}
-	PrintTrace   = true
-	ParallelEVMS = false
-	threadlimit  = 10
+	PrintTrace = true
 )
 
 // Execute runs all tests in `dirName` and saves crashers in `outDir`
-func Execute(dirName, outDir string) error {
+func Execute(dirName, outDir string, threadlimit int) error {
 	infos, err := ioutil.ReadDir(dirName)
 	if err != nil {
 		return err
 	}
 	errChan := make(chan error)
-	if ParallelEVMS || evms.PipeStrategy {
-		threadlimit = 1
-	}
 	limit := limiter.NewConcurrencyLimiter(threadlimit)
 	meter := metrics.GetOrRegisterMeterForced("ticks", nil)
 
 	for i, info := range infos {
 		// All generated tests end in .json
 		if strings.HasSuffix(info.Name(), ".json") {
-			fmt.Printf("Executing test: %v of %v, %f per minute \n", i/2, len(infos)/2, meter.Rate1())
+			fmt.Printf("Executing test: %v of %v, %f per second \n", i/2, len(infos)/2, meter.Rate1())
 			meter.Mark(1)
 			name := info.Name()
 			job := func() {
@@ -94,11 +89,7 @@ func ExecuteFullTest(dirName, outDir, filename string, doPurge bool) error {
 		outputs   [][]byte
 		err       error
 	)
-	if ParallelEVMS {
-		outputs, err = executeTestParallel(testFile)
-	} else {
-		outputs, err = ExecuteTest(testFile)
-	}
+	outputs, err = ExecuteTest(testFile)
 	if err != nil {
 		return err
 	}
