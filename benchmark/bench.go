@@ -14,50 +14,20 @@ import (
 )
 
 // RunFullBench runs a full benchmark with N runs.
-func RunFullBench(N int) {
+func RunFullBench(N int, threadlimit int) {
 	time, err := testGeneration(N)
 	// Basic building blocks
 	printResult("BenchmarkTestGeneration", time, err)
-	/*
-		time, err = execution(N)
-		printResult("BenchmarkExecution", time, err)
-		time, err = verify(N)
-		printResult("BenchmarkVerification", time, err)
-		// single thread execution
-		time, err = single(N)
-		printResult("BenchmarkSingle", time, err)
-		time, err = singleBatch(N)
-		printResult("BenchmarkSingleBatch", time, err)
-		time, err = singleDocker(N)
-		printResult("BenchmarkSingleDocker", time, err)
-		time, err = singleBatchDocker(N)
-		printResult("BenchmarkSingleBatchDocker", time, err)
-	*/
-	// parallel execution linear evms (structure 3.1)
-	//time, err = linear(N)
+	time, err = execution(N)
+	printResult("BenchmarkExecution", time, err)
+	time, err = verify(N)
+	printResult("BenchmarkVerification", time, err)
+	// parallel execution linear evms (strategy 3.1)
+	time, err = linear(N, threadlimit)
 	printResult("BenchmarkLinear", time, err)
-	//time, err = linearBatch(N)
-	printResult("BenchmarkLinearBatch", time, err)
-	/*
-		time, err = linearDocker(N)
-		printResult("BenchmarkLinearDocker", time, err)
-		time, err = linearBatchDocker(N)
-		printResult("BenchmarkLinearBatchDocker", time, err)
+	time, err = linearDocker(N, threadlimit)
+	printResult("BenchmarkLinearDocker", time, err)
 
-		// parallel execution parallel evms (structure 3.2)
-		time, err = parallel(N)
-		printResult("BenchmarkParallel", time, err)
-		time, err = parallelBatch(N)
-		printResult("BenchmarkParallelBatch", time, err)
-		time, err = parallelDocker(N)
-		printResult("BenchmarkParallelDocker", time, err)
-
-		time, err = parallelBatchDocker(N)
-		printResult("BenchmarkParallelBatchDocker", time, err)
-	*/
-	// pipe strategy besu
-	//time, err = piping(N)
-	//printResult("BenchmarkPipeStrategy", time, err)
 }
 
 func printResult(name string, time time.Duration, err error) {

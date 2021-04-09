@@ -24,7 +24,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"runtime/pprof"
 	"time"
 
 	"gopkg.in/urfave/cli.v1"
@@ -42,7 +41,7 @@ func initApp() *cli.App {
 	app.Usage = "Generator for Ethereum Virtual Machine tests"
 	app.Action = mainLoop
 	app.Flags = []cli.Flag{
-		genProcFlag,
+		genThreadsFlag,
 		maxTestsFlag,
 		minTestsFlag,
 		buildFlag,
@@ -68,11 +67,7 @@ func main() {
 }
 
 func mainLoop(c *cli.Context) {
-	go func() {
-		time.Sleep(2 * time.Minute)
-		file, _ := os.Create("heap_dump_fuzzyVM")
-		pprof.WriteHeapProfile(file)
-	}()
+	execThreads := c.GlobalInt(execThreadsFlag.Name)
 	if c.GlobalBool(buildFlag.Name) {
 		if err := startBuilder(); err != nil {
 			panic(err)
@@ -80,11 +75,11 @@ func mainLoop(c *cli.Context) {
 	} else if c.GlobalString(retestFlag.Name) != "" {
 		retest(c)
 	} else if c.GlobalBool(execNoGen.Name) {
-		if err := executor.ExecuteBatch(dirName, outDir); err != nil {
+		if err := executor.Execute(dirName, outDir, execThreads); err != nil {
 			panic(err)
 		}
 	} else if c.GlobalInt(benchFlag.Name) != 0 {
-		benchmark.RunFullBench(c.GlobalInt(benchFlag.Name))
+		benchmark.RunFullBench(c.GlobalInt(benchFlag.Name), execThreads)
 	} else if c.GlobalInt(corpusFlag.Name) != 0 {
 		createCorpus(c.GlobalInt(corpusFlag.Name))
 	} else {
@@ -114,20 +109,21 @@ func retest(c *cli.Context) {
 
 func generatorLoop(c *cli.Context) {
 	var (
-		genProc  = c.GlobalString(genProcFlag.Name)
-		minTests = c.GlobalInt(minTestsFlag.Name)
-		maxTests = c.GlobalInt(maxTestsFlag.Name)
-		errChan  = make(chan error)
+		genThreads  = c.GlobalInt(genThreadsFlag.Name)
+		execThreads = c.GlobalInt(execThreadsFlag.Name)
+		minTests    = c.GlobalInt(minTestsFlag.Name)
+		maxTests    = c.GlobalInt(maxTestsFlag.Name)
+		errChan     = make(chan error)
 	)
 	for {
 		fmt.Println("Starting generator")
-		cmd := startGenerator(genProc)
+		cmd := startGenerator(genThreads)
 		go func() {
 			for {
 				// Sleep a bit to ensure some tests have been generated.
 				time.Sleep(30 * time.Second)
 				fmt.Println("Starting executor")
-				if err := executor.ExecuteBatch(dirName, outDir); err != nil {
+				if err := executor.Execute(dirName, outDir, execThreads); err != nil {
 					errChan <- err
 				}
 				errChan <- nil
@@ -151,10 +147,10 @@ func generatorLoop(c *cli.Context) {
 	}
 }
 
-func startGenerator(genThreads string) *exec.Cmd {
+func startGenerator(genThreads int) *exec.Cmd {
 	cmdName := "go-fuzz"
 	dir := "./fuzzer/fuzzer-fuzz.zip"
-	cmd := exec.Command(cmdName, "--bin", dir, "--procs", genThreads)
+	cmd := exec.Command(cmdName, "--bin", dir, "--procs", fmt.Sprint(genThreads))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
