@@ -21,11 +21,9 @@ import (
 	"math/big"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
-	"github.com/MariusVanDerWijden/FuzzyVM/generator/precompiles"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/holiman/goevmlab/fuzzing"
-	"github.com/holiman/goevmlab/ops"
 	"github.com/holiman/goevmlab/program"
 )
 
@@ -42,142 +40,24 @@ var (
 // a gstMaker based on it as well as its program code.
 func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 	var (
-		p         = program.NewProgram()
-		jumptable = NewJumptable(uint64(minJumpDistance))
+		env = Environment{
+			p:         program.NewProgram(),
+			f:         f,
+			jumptable: NewJumptable(uint64(minJumpDistance)),
+		}
+		strategies = newAccStrats(basicStrategies)
 	)
 
 	// Run for counter rounds
 	counter := f.Byte()
 	for i := 0; i < int(counter); i++ {
+		// Select one of the strategies
 		rnd := f.Byte()
-		switch rnd % 25 {
-		case 0, 17, 18, 19:
-			// Just add a single opcode
-			op := ops.OpCode(f.Byte())
-			// Nethermind currently uses a different blockhash provider in the statetests,
-			// so ignore the blockhash operator to reduce false positives.
-			// see: https://gist.github.com/MariusVanDerWijden/97fe9eb1aac074f7ccf6aef169aaadaa
-			if op != ops.BLOCKHASH {
-				p.Op(op)
-			}
-		case 1:
-			// Set a jumpdest
-			jumptable.Push(p.Jumpdest(), p.Label())
-		case 2:
-			// Set a jumpdest label
-			jumptable.Push(p.Label(), p.Label())
-		case 3:
-			// Set the jumpdest randomly
-			jumptable.Push(uint64(f.Uint16()), p.Label())
-		case 4:
-			// Push the jumpdest on the stack
-			jumpdest := jumptable.Pop(p.Label())
-			p.Push(jumpdest)
-		case 5:
-			// Jump to a label
-			jumpdest := jumptable.Pop(p.Label())
-			p.Jump(jumpdest)
-		case 6:
-			// Jumpi to a label
-			var (
-				jumpdest   = jumptable.Pop(p.Label())
-				shouldJump = f.Bool()
-				condition  = big.NewInt(0)
-			)
-			if shouldJump {
-				condition = f.BigInt()
-			}
-			// jumps if condition != 0
-			p.JumpIf(jumpdest, condition)
-		case 7:
-			// Copy a part of memory into storage
-			var (
-				memStart  = int(f.Uint16())
-				memSize   = int(f.Uint16())
-				startSlot = int(f.Uint16())
-			)
-			// TODO MSTORE currently uses too much gas
-			p.MemToStorage(memStart, memSize, startSlot)
-		case 8:
-			// Store data into memory
-			var (
-				data     = f.ByteSlice256()
-				memStart = f.Uint32()
-			)
-			p.Mstore(data, memStart)
-		case 9:
-			// Store data in storage
-			var (
-				data = make([]byte, f.Byte()%32)
-				slot = f.Uint32()
-			)
-			p.Sstore(slot, data)
-		case 10:
-			// Loads data into memory and returns it
-			p.ReturnData(f.ByteSlice256())
-		case 11:
-			// Returns with offset, len
-			var (
-				offset = uint32(f.Uint16())
-				len    = uint32(f.Uint16())
-			)
-			p.Return(offset, len)
-		case 12:
-			// Create and call a random program
-			var (
-				code      = f.ByteSlice256()
-				isCreate2 = f.Bool()
-				callOp    = ops.OpCode(f.Byte())
-			)
-			p.CreateAndCall(code, isCreate2, callOp)
-		case 13:
-			// Prevent to deep recursion
-			if recursionLevel > maxRecursionLevel {
-				continue
-			}
-			recursionLevel++
-			// Create and call a meaningful program
-			var (
-				seedLen   = f.Uint16()
-				seed      = f.ByteSlice(int(seedLen))
-				newFiller = filler.NewFiller(seed)
-				_, code   = GenerateProgram(newFiller)
-				isCreate2 = f.Bool()
-				callOp    = ops.OpCode(f.Byte())
-			)
-			p.CreateAndCall(code, isCreate2, callOp)
-			// Decreasing recursion level generates to heavy test cases,
-			// so once we reach maxRecursionLevel we don't create new CreateAndCalls.
-
-			// recursionLevel--
-		case 14:
-			// Call a random address
-			var addr common.Address
-			if f.Bool() {
-				// call a precompile
-				addr = common.BigToAddress(new(big.Int).Mod(f.BigInt16(), big.NewInt(20)))
-			} else {
-				addr = common.BytesToAddress(f.ByteSlice(20))
-			}
-
-			c := precompiles.CallObj{
-				Gas:       f.GasInt(),
-				Address:   addr,
-				Value:     f.BigInt16(),
-				InOffset:  uint32(f.Uint16()),
-				InSize:    uint32(f.Uint16()),
-				OutOffset: uint32(f.Uint16()),
-				OutSize:   uint32(f.Uint16()),
-			}
-			precompiles.CallRandomizer(p, f, c)
-		case 15:
-			precompiles.CallPrecompile(p, f)
-		case 16:
-			b := make([]byte, f.Byte()%32)
-			p.Push(b)
-		}
+		strategy := selectStrat(rnd, strategies)
+		// Execute the strategy
+		strategy.Execute(env)
 	}
-	code := jumptable.InsertJumps(p.Bytecode())
+	code := env.jumptable.InsertJumps(env.p.Bytecode())
 	return createGstMaker(f, code), code
 }
 
