@@ -21,7 +21,7 @@ import (
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator/precompiles"
-	"github.com/MariusVanDerWijden/ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/holiman/goevmlab/ops"
 )
 
