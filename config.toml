@@ -1,0 +1,5 @@
+Geth = ["/home/matematik/ethereum/FuzzyVM/vms/geth-evm", "/home/matematik/ethereum/FuzzyVM/vms/turbogeth-evm"]
+OpenEthereum = ["/home/matematik/ethereum/FuzzyVM/vms/openethereum-evm"]
+Nethermind = ["/home/matematik/ethereum/neth_test/nethermind/src/Nethermind/Nethermind.State.Test.Runner/bin/Release/netcoreapp3.1/nethtest"]
+Besu = ["/home/matematik/ethereum/besu/ethereum/evmtool/build/install/evmtool/bin/evm"]
+Aleth = []

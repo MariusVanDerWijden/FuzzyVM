@@ -64,4 +64,9 @@ var (
 		Name:  "corpus",
 		Usage: "Number of corpus elements that should be created",
 	}
+	configFileFlag = cli.StringFlag{
+		Name:  "config",
+		Usage: "Path to the config file required to run FuzzyVM",
+		Value: "config.toml",
+	}
 )

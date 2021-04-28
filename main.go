@@ -49,6 +49,7 @@ func initApp() *cli.App {
 		execNoGen,
 		benchFlag,
 		corpusFlag,
+		configFileFlag,
 	}
 	return app
 }
@@ -67,15 +68,25 @@ func main() {
 }
 
 func mainLoop(c *cli.Context) {
-	execThreads := c.GlobalInt(execThreadsFlag.Name)
+	var (
+		execThreads = c.GlobalInt(execThreadsFlag.Name)
+		configFile  = c.GlobalString(configFileFlag.Name)
+	)
+
+	vms, err := getVMsFromConfig(configFile)
+	if err != nil {
+		panic(err)
+	}
+	exec := executor.NewExecutor(vms, true)
+
 	if c.GlobalBool(buildFlag.Name) {
 		if err := startBuilder(); err != nil {
 			panic(err)
 		}
 	} else if c.GlobalString(retestFlag.Name) != "" {
-		retest(c)
+		retest(c, exec)
 	} else if c.GlobalBool(execNoGen.Name) {
-		if err := executor.Execute(dirName, outDir, execThreads); err != nil {
+		if err := exec.Execute(dirName, outDir, execThreads); err != nil {
 			panic(err)
 		}
 	} else if c.GlobalInt(benchFlag.Name) != 0 {
@@ -83,7 +94,7 @@ func mainLoop(c *cli.Context) {
 	} else if c.GlobalInt(corpusFlag.Name) != 0 {
 		createCorpus(c.GlobalInt(corpusFlag.Name))
 	} else {
-		generatorLoop(c)
+		generatorLoop(c, exec)
 	}
 }
 
@@ -100,14 +111,14 @@ func startBuilder() error {
 	return cmd.Run()
 }
 
-func retest(c *cli.Context) {
+func retest(c *cli.Context, exec *executor.Executor) {
 	p := c.GlobalString(retestFlag.Name)
 	dir := path.Dir(p)
 	test := path.Base(p)
-	executor.ExecuteFullTest(dirName, dir, test, false)
+	exec.ExecuteFullTest(dirName, dir, test, false)
 }
 
-func generatorLoop(c *cli.Context) {
+func generatorLoop(c *cli.Context, exec *executor.Executor) {
 	var (
 		genThreads  = c.GlobalInt(genThreadsFlag.Name)
 		execThreads = c.GlobalInt(execThreadsFlag.Name)
@@ -123,7 +134,7 @@ func generatorLoop(c *cli.Context) {
 				// Sleep a bit to ensure some tests have been generated.
 				time.Sleep(30 * time.Second)
 				fmt.Println("Starting executor")
-				if err := executor.Execute(dirName, outDir, execThreads); err != nil {
+				if err := exec.Execute(dirName, outDir, execThreads); err != nil {
 					errChan <- err
 				}
 				errChan <- nil

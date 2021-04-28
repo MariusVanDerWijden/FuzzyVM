@@ -31,19 +31,22 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	vms = []evms.Evm{
-		evms.NewGethEVM("/home/matematik/ethereum/FuzzyVM/vms/geth-evm"),
-		evms.NewParityVM("/home/matematik/ethereum/FuzzyVM/vms/openethereum-evm"),
-		evms.NewNethermindVM("/home/matematik/ethereum/neth_test/nethermind/src/Nethermind/Nethermind.State.Test.Runner/bin/Release/netcoreapp3.1/nethtest"),
-		evms.NewBesuVM("/home/matematik/ethereum/besu/ethereum/evmtool/build/install/evmtool/bin/evm"),
-		evms.NewGethEVM("/home/matematik/ethereum/FuzzyVM/vms/turbogeth-evm"),
+var PrintTrace = true
+
+type Executor struct {
+	Vms        []evms.Evm
+	PrintTrace bool
+}
+
+func NewExecutor(vms []evms.Evm, printTrace bool) *Executor {
+	return &Executor{
+		Vms:        vms,
+		PrintTrace: printTrace,
 	}
-	PrintTrace = true
-)
+}
 
 // Execute runs all tests in `dirName` and saves crashers in `outDir`
-func Execute(dirName, outDir string, threadlimit int) error {
+func (e *Executor) Execute(dirName, outDir string, threadlimit int) error {
 	infos, err := ioutil.ReadDir(dirName)
 	if err != nil {
 		return err
@@ -59,7 +62,7 @@ func Execute(dirName, outDir string, threadlimit int) error {
 			meter.Mark(1)
 			name := info.Name()
 			job := func() {
-				if err := ExecuteFullTest(dirName, outDir, name, true); err != nil {
+				if err := e.ExecuteFullTest(dirName, outDir, name, true); err != nil {
 					err := errors.Wrap(err, fmt.Sprintf("in file: %v", name))
 					fmt.Println(err)
 					//errChan <- err
@@ -81,7 +84,7 @@ func Execute(dirName, outDir string, threadlimit int) error {
 }
 
 // ExecuteFullTest executes a single test.
-func ExecuteFullTest(dirName, outDir, filename string, doPurge bool) error {
+func (e *Executor) ExecuteFullTest(dirName, outDir, filename string, doPurge bool) error {
 	var (
 		testFile  = fmt.Sprintf("%v/%v", dirName, filename)
 		testName  = strings.TrimRight(filename, ".json")
@@ -89,17 +92,17 @@ func ExecuteFullTest(dirName, outDir, filename string, doPurge bool) error {
 		outputs   [][]byte
 		err       error
 	)
-	outputs, err = ExecuteTest(testFile)
+	outputs, err = e.ExecuteTest(testFile)
 	if err != nil {
 		return err
 	}
-	return verifyAndPurge(traceFile, testName, outDir, testFile, outputs, doPurge)
+	return e.verifyAndPurge(traceFile, testName, outDir, testFile, outputs, doPurge)
 }
 
-func verifyAndPurge(traceFile, testName, outDir, testFile string, outputs [][]byte, doPurge bool) error {
-	if !Verify(traceFile, outputs) {
+func (e *Executor) verifyAndPurge(traceFile, testName, outDir, testFile string, outputs [][]byte, doPurge bool) error {
+	if !e.Verify(traceFile, outputs) {
 		fmt.Printf("Test %v failed, dumping\n", testName)
-		if err := dump(testName, outDir, vms, outputs); err != nil {
+		if err := dump(testName, outDir, e.Vms, outputs); err != nil {
 			return err
 		}
 	} else {
@@ -109,17 +112,17 @@ func verifyAndPurge(traceFile, testName, outDir, testFile string, outputs [][]by
 				fmt.Printf("Purging failed: %v\n", err)
 			}
 		} else if PrintTrace {
-			printOutputs(outputs)
+			e.printOutputs(outputs)
 		}
 	}
 	return nil
 }
 
 // ExecuteTest executes a state test.
-func ExecuteTest(testName string) ([][]byte, error) {
+func (e *Executor) ExecuteTest(testName string) ([][]byte, error) {
 	var buf [][]byte
 	var buffer bytes.Buffer
-	for _, vm := range vms {
+	for _, vm := range e.Vms {
 		buffer.Reset()
 		if _, err := vm.RunStateTest(testName, &buffer, false); err != nil {
 			return nil, err
@@ -130,7 +133,7 @@ func ExecuteTest(testName string) ([][]byte, error) {
 }
 
 // Verify checks if the traces match the default trace.
-func Verify(traceName string, outputs [][]byte) bool {
+func (e *Executor) Verify(traceName string, outputs [][]byte) bool {
 	var ioReaders []io.Reader
 	for _, out := range outputs {
 		ioReaders = append(ioReaders, bytes.NewReader(out))
@@ -143,7 +146,7 @@ func Verify(traceName string, outputs [][]byte) bool {
 		}
 		ioReaders = append(ioReaders, bytes.NewBuffer(ref))
 	*/
-	return evms.CompareFiles(vms, ioReaders)
+	return evms.CompareFiles(e.Vms, ioReaders)
 }
 
 // dump writes outputs to a file in case of a verification problem
@@ -168,11 +171,11 @@ func purge(filename, tracename string) error {
 }
 
 // printOutputs prints out the produced traces
-func printOutputs(outputs [][]byte) {
+func (e *Executor) printOutputs(outputs [][]byte) {
 	fmt.Println("TRACES:")
 	fmt.Println("--------------")
 	for i, out := range outputs {
-		fmt.Printf("%v: \n", vms[i].Name())
+		fmt.Printf("%v: \n", e.Vms[i].Name())
 		fmt.Print(string(out))
 		fmt.Println("--------------")
 	}
