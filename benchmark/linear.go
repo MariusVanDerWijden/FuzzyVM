@@ -6,6 +6,7 @@ import (
 
 	"github.com/MariusVanDerWijden/FuzzyVM/executor"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
+	"github.com/holiman/goevmlab/evms"
 )
 
 // testGeneration generates N programs.
@@ -32,13 +33,14 @@ func verify(N int) (time.Duration, error) {
 		return time.Nanosecond, err
 	}
 	name = fmt.Sprintf("%v/%v.json", outDir, name)
-	out, err := executor.ExecuteTest(name)
+	exc := newExecutor()
+	out, err := exc.ExecuteTest(name)
 	if err != nil {
 		return time.Nanosecond, err
 	}
 	start := time.Now()
 	for i := 0; i < N; i++ {
-		if !executor.Verify(name, out) {
+		if !exc.Verify(name, out) {
 			return time.Nanosecond, fmt.Errorf("Verification failed: %v", name)
 		}
 	}
@@ -56,10 +58,10 @@ func execution(N int) (time.Duration, error) {
 		return time.Nanosecond, err
 	}
 	name = fmt.Sprintf("%v.json", name)
-	executor.PrintTrace = false
+	exc := newExecutor()
 	start := time.Now()
 	for i := 0; i < N; i++ {
-		executor.ExecuteFullTest(outDir, crashers, name, false)
+		exc.ExecuteFullTest(outDir, crashers, name, false)
 	}
 	return time.Since(start), nil
 }
@@ -87,10 +89,15 @@ func execMultiple(N int, threadlimit int) (time.Duration, error) {
 		}
 		names = append(names, fmt.Sprintf("%v.json", name))
 	}
-	executor.PrintTrace = false
+	exc := newExecutor()
 	start := time.Now()
-	if err := executor.Execute(outDir, crashers, threadlimit); err != nil {
+	if err := exc.Execute(outDir, crashers, threadlimit); err != nil {
 		return time.Nanosecond, err
 	}
 	return time.Since(start), nil
+}
+
+func newExecutor() *executor.Executor {
+	// TODO add meaningful vms for benchmarks
+	return executor.NewExecutor([]evms.Evm{}, false)
 }
