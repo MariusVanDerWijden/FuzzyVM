@@ -6,7 +6,6 @@ import (
 
 	"github.com/MariusVanDerWijden/FuzzyVM/executor"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
-	"github.com/holiman/goevmlab/evms"
 )
 
 // testGeneration generates N programs.
@@ -99,5 +98,5 @@ func execMultiple(N int, threadlimit int) (time.Duration, error) {
 
 func newExecutor() *executor.Executor {
 	// TODO add meaningful vms for benchmarks
-	return executor.NewExecutor([]evms.Evm{}, false)
+	return executor.NewExecutor(nil, false)
 }

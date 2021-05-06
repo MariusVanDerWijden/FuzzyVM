@@ -54,8 +54,9 @@ func initApp() *cli.App {
 	return app
 }
 
-var (
-	app     = initApp()
+var app = initApp()
+
+const (
 	dirName = "out"
 	outDir  = "crashes"
 )
@@ -86,6 +87,7 @@ func mainLoop(c *cli.Context) {
 	} else if c.GlobalString(retestFlag.Name) != "" {
 		retest(c, exec)
 	} else if c.GlobalBool(execNoGen.Name) {
+		ensureDirs(dirName, outDir)
 		if err := exec.Execute(dirName, outDir, execThreads); err != nil {
 			panic(err)
 		}
@@ -136,6 +138,7 @@ func generatorLoop(c *cli.Context, exec *executor.Executor) {
 				fmt.Println("Starting executor")
 				if err := exec.Execute(dirName, outDir, execThreads); err != nil {
 					errChan <- err
+					return
 				}
 				errChan <- nil
 			}
@@ -173,11 +176,11 @@ func startGenerator(genThreads int) *exec.Cmd {
 func watcher(cmd *exec.Cmd, errChan chan error, maxTests int) {
 	for {
 		time.Sleep(time.Second * 5)
-		infos, err := ioutil.ReadDir("out")
+		infos, err := ioutil.ReadDir(dirName)
 		if err != nil {
 			fmt.Printf("Error killing process: %v\n", err)
 			cmd.Process.Kill()
-			errChan <- err
+			errChan <- fmt.Errorf("can't open the directory %q: %w", dirName, err)
 		}
 		if len(infos) > maxTests {
 			fmt.Printf("Max tests exceeded, pausing\n")
@@ -189,13 +192,7 @@ func watcher(cmd *exec.Cmd, errChan chan error, maxTests int) {
 
 func createCorpus(n int) {
 	dir := "corpus"
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		if err := os.Mkdir(dir, 0777); err != nil {
-			fmt.Printf("Error while making corpus dir: %v\n", err)
-		}
-	} else if err != nil {
-		fmt.Printf("Error while using os.Stat: %v\n", err)
-	}
+	ensureDirs(dir)
 	for i := 0; i < n; i++ {
 		elem, err := fuzzer.CreateNewCorpusElement()
 		if err != nil {
@@ -204,6 +201,18 @@ func createCorpus(n int) {
 		filename := sha1.Sum(elem)
 		if err := ioutil.WriteFile(common.Bytes2Hex(filename[:]), elem, 0755); err != nil {
 			fmt.Printf("Error while writing corpus element: %v\n", err)
+		}
+	}
+}
+
+func ensureDirs(dirs ...string) {
+	for _, dir := range dirs {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			if err := os.Mkdir(dir, 0777); err != nil {
+				fmt.Printf("Error while making the dir %q: %v\n", dir, err)
+			}
+		} else if err != nil {
+			fmt.Printf("Error while using os.Stat dir %q: %v\n", dir, err)
 		}
 	}
 }

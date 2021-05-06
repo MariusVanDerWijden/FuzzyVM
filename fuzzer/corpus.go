@@ -21,9 +21,10 @@ import (
 	"math"
 	"math/rand"
 
+	"github.com/korovkin/limiter"
+
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
-	"github.com/korovkin/limiter"
 )
 
 var cutoff = 10

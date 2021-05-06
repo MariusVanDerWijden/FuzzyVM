@@ -26,28 +26,30 @@ import (
 
 	"github.com/holiman/goevmlab/evms"
 	"github.com/naoina/toml"
+
+	"github.com/MariusVanDerWijden/FuzzyVM/executor"
 )
 
-func getVMsFromConfig(file string) ([]evms.Evm, error) {
+func getVMsFromConfig(file string) ([]*executor.VM, error) {
 	conf, err := loadConfig(file)
 	if err != nil {
-		return []evms.Evm{}, err
+		return nil, err
 	}
-	var vms []evms.Evm
+	var vms []*executor.VM
 	for _, s := range conf.Geth {
-		vms = append(vms, evms.NewGethEVM(s))
+		vms = append(vms, &executor.VM{evms.NewGethEVM(s), s})
 	}
 	for _, s := range conf.Nethermind {
-		vms = append(vms, evms.NewNethermindVM(s))
+		vms = append(vms, &executor.VM{evms.NewNethermindVM(s), s})
 	}
 	for _, s := range conf.Besu {
-		vms = append(vms, evms.NewBesuVM(s))
+		vms = append(vms, &executor.VM{evms.NewBesuVM(s), s})
 	}
 	for _, s := range conf.OpenEthereum {
-		vms = append(vms, evms.NewParityVM(s))
+		vms = append(vms, &executor.VM{evms.NewParityVM(s), s})
 	}
 	for _, s := range conf.Aleth {
-		vms = append(vms, evms.NewAlethVM(s))
+		vms = append(vms, &executor.VM{evms.NewAlethVM(s), s})
 	}
 	return vms, nil
 }
