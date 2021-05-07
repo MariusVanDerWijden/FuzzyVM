@@ -1,5 +1,0 @@
-Geth = ["/mnt/sdb/go/src/github.com/ethereum/go-ethereum/build/bin/evm", "/mnt/sdb/go/src/github.com/ledgerwatch/sync/turbo-geth/build/bin/evm"]
-OpenEthereum = []
-Nethermind = []
-Besu = []
-Aleth = []

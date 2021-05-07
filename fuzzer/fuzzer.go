@@ -19,13 +19,13 @@ package fuzzer
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
 	"time"
 
 	"github.com/holiman/goevmlab/fuzzing"
-	json "github.com/json-iterator/go"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"

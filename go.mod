@@ -6,7 +6,6 @@ require (
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
 	github.com/ethereum/go-ethereum v1.10.3
 	github.com/holiman/goevmlab v0.0.0-20210406174504-acc14986d1a1
-	github.com/json-iterator/go v1.1.11
 	github.com/korovkin/limiter v0.0.0-20190919045942-dac5a6b2a536
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/pkg/errors v0.9.1

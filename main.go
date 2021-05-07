@@ -75,15 +75,6 @@ func mainLoop(c *cli.Context) {
 		configFile  = c.GlobalString(configFileFlag.Name)
 	)
 
-	/*
-		f, err := os.Create("cpu.prof")
-		if err != nil {
-			panic(err)
-		}
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
-	*/
-
 	vms, err := getVMsFromConfig(configFile)
 	if err != nil {
 		panic(err)
@@ -165,7 +156,7 @@ func generatorLoop(c *cli.Context, exec *executor.Executor) {
 		if err != nil {
 			panic(err)
 		}
-		if len(infos) > minTests {
+		if len(infos) < minTests {
 			fmt.Println("Tests exceed minTests after execution")
 			return
 		}
