@@ -28,6 +28,7 @@ import (
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/holiman/goevmlab/evms"
 	"github.com/korovkin/limiter"
+	"github.com/pkg/errors"
 )
 
 var PrintTrace = true
@@ -61,7 +62,7 @@ func (e *Executor) VMs() []evms.Evm {
 func (e *Executor) Execute(dirName, outDir string, threadlimit int) error {
 	infos, err := ioutil.ReadDir(dirName)
 	if err != nil {
-		return fmt.Errorf("can't read %q: %w", dirName, err)
+		return errors.Wrapf(err, "can't read %q", dirName)
 	}
 	errChan := make(chan error)
 	limit := limiter.NewConcurrencyLimiter(threadlimit)
@@ -75,7 +76,7 @@ func (e *Executor) Execute(dirName, outDir string, threadlimit int) error {
 			name := info.Name()
 			job := func() {
 				if err := e.ExecuteFullTest(dirName, outDir, name, true); err != nil {
-					err = fmt.Errorf("in file %q: %w", name, err)
+					err = errors.Wrapf(err, "in file %q", name)
 					fmt.Println(err)
 					//errChan <- err
 				}
@@ -115,7 +116,7 @@ func (e *Executor) verifyAndPurge(traceFile, testName, outDir, testFile string, 
 	if !e.Verify(traceFile, outputs) {
 		fmt.Printf("Test %v failed, dumping\n", testName)
 		if err := dump(testName, outDir, e.Vms, outputs); err != nil {
-			return err
+			return errors.Wrapf(err, "in %s, test %s, file %s", outDir, testFile, testName)
 		}
 	} else {
 		if doPurge {
@@ -137,7 +138,7 @@ func (e *Executor) ExecuteTest(testName string) ([][]byte, error) {
 	for _, vm := range e.Vms {
 		buffer.Reset()
 		if _, err := vm.RunStateTest(testName, &buffer, false); err != nil {
-			return nil, fmt.Errorf("on %q: %w", testName, err)
+			return nil, errors.Wrapf(err, "on %q", testName)
 		}
 		buf = append(buf, buffer.Bytes())
 	}
@@ -169,7 +170,7 @@ func dump(filename, outdir string, vms []*VM, outputs [][]byte) error {
 		filename := fmt.Sprintf("%v/%v-%v-trace.jsonl", outdir, filename, vms[i].Name())
 		err = ioutil.WriteFile(filename, out, 0755)
 		if err != nil {
-			return fmt.Errorf("can't dump. error while writing the file %q: %w", filename, err)
+			return errors.Wrapf(err, "can't dump. error while writing the file %q", filename)
 		}
 	}
 	return nil

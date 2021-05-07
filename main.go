@@ -26,6 +26,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/pkg/errors"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/benchmark"
@@ -74,11 +75,22 @@ func mainLoop(c *cli.Context) {
 		configFile  = c.GlobalString(configFileFlag.Name)
 	)
 
+	/*
+		f, err := os.Create("cpu.prof")
+		if err != nil {
+			panic(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	*/
+
 	vms, err := getVMsFromConfig(configFile)
 	if err != nil {
 		panic(err)
 	}
 	exec := executor.NewExecutor(vms, true)
+
+	ensureDirs(dirName, outDir)
 
 	if c.GlobalBool(buildFlag.Name) {
 		if err := startBuilder(); err != nil {
@@ -87,7 +99,6 @@ func mainLoop(c *cli.Context) {
 	} else if c.GlobalString(retestFlag.Name) != "" {
 		retest(c, exec)
 	} else if c.GlobalBool(execNoGen.Name) {
-		ensureDirs(dirName, outDir)
 		if err := exec.Execute(dirName, outDir, execThreads); err != nil {
 			panic(err)
 		}
@@ -180,7 +191,7 @@ func watcher(cmd *exec.Cmd, errChan chan error, maxTests int) {
 		if err != nil {
 			fmt.Printf("Error killing process: %v\n", err)
 			cmd.Process.Kill()
-			errChan <- fmt.Errorf("can't open the directory %q: %w", dirName, err)
+			errChan <- errors.Wrapf(err, "can't open the directory %q", dirName)
 		}
 		if len(infos) > maxTests {
 			fmt.Printf("Max tests exceeded, pausing\n")
@@ -191,8 +202,9 @@ func watcher(cmd *exec.Cmd, errChan chan error, maxTests int) {
 }
 
 func createCorpus(n int) {
-	dir := "corpus"
+	const dir = "corpus"
 	ensureDirs(dir)
+
 	for i := 0; i < n; i++ {
 		elem, err := fuzzer.CreateNewCorpusElement()
 		if err != nil {
@@ -207,11 +219,15 @@ func createCorpus(n int) {
 
 func ensureDirs(dirs ...string) {
 	for _, dir := range dirs {
-		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			if err := os.Mkdir(dir, 0777); err != nil {
-				fmt.Printf("Error while making the dir %q: %v\n", dir, err)
+		_, err := os.Stat(dir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				if err = os.Mkdir(dir, 0777); err != nil {
+					fmt.Printf("Error while making the dir %q: %v\n", dir, err)
+					return
+				}
 			}
-		} else if err != nil {
+
 			fmt.Printf("Error while using os.Stat dir %q: %v\n", dir, err)
 		}
 	}
