@@ -43,6 +43,10 @@ type VM struct {
 	Path string
 }
 
+func (vm VM) Name() string {
+	return fmt.Sprintf("%s(%s)", vm.Evm.Name(), vm.Path)
+}
+
 func NewExecutor(vms []*VM, printTrace bool) *Executor {
 	return &Executor{
 		Vms:        vms,
@@ -114,7 +118,7 @@ func (e *Executor) ExecuteFullTest(dirName, outDir, filename string, doPurge boo
 
 func (e *Executor) verifyAndPurge(traceFile, testName, outDir, testFile string, outputs [][]byte, doPurge bool) error {
 	if !e.Verify(traceFile, outputs) {
-		fmt.Printf("Test %v failed, dumping\n", testName)
+		fmt.Printf("Test %s failed, dumping\n", testName)
 		if err := dump(testName, outDir, e.Vms, outputs); err != nil {
 			return errors.Wrapf(err, "in %s, test %s, file %s", outDir, testFile, testName)
 		}
@@ -138,7 +142,7 @@ func (e *Executor) ExecuteTest(testName string) ([][]byte, error) {
 	for _, vm := range e.Vms {
 		buffer.Reset()
 		if _, err := vm.RunStateTest(testName, &buffer, false); err != nil {
-			return nil, errors.Wrapf(err, "on %q", testName)
+			return nil, errors.Wrapf(err, "on %q on %s VM", testName, vm.Path)
 		}
 		buf = append(buf, buffer.Bytes())
 	}

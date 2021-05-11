@@ -156,7 +156,7 @@ func generatorLoop(c *cli.Context, exec *executor.Executor) {
 		if err != nil {
 			panic(err)
 		}
-		if len(infos) < minTests {
+		if len(infos) > minTests {
 			fmt.Println("Tests exceed minTests after execution")
 			return
 		}
