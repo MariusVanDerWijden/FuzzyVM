@@ -36,4 +36,4 @@ You can generate corpus elements with `./FuzzyVM --corpus N`.
 
 FuzzyVM has to be configured to know which EVMs it should use.
 You can specify the paths to the EVMs in a config file.
-An example for the config file can be found in `config.toml`.
+An example for the config file can be found in `config_example.toml`, just rename it to `config.toml` and fill in with your EVM paths.

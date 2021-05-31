@@ -10,3 +10,23 @@ suppressions
 main
 build
 FuzzyVM
+config.toml
+
+# Git Ignore file
+
+# mac
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# JetBrains
+.idea/
+
+# Coverage generated files
+coverage.out
+coverage.out.tmp
+coverage.xml
+
+# Linux trash folder which might appear on any partition or disk
+.Trash-*

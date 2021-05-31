@@ -77,13 +77,13 @@ func storeTest(test *fuzzing.GeneralStateTest, testName string) {
 	path := fmt.Sprintf("%v/%v.json", outputDir, testName)
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
 	if err != nil {
-		panic(fmt.Sprintf("Could not open test file: %v", err))
+		panic(fmt.Sprintf("Could not open test file %q: %v", testName, err))
 	}
 	defer f.Close()
 	// Write to file
 	encoder := json.NewEncoder(f)
 	if err = encoder.Encode(test); err != nil {
-		panic(fmt.Sprintf("Could not encode state test: %v", err))
+		panic(fmt.Sprintf("Could not encode state test %q: %v", testName, err))
 	}
 }
 

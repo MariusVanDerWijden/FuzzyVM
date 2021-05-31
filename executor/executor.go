@@ -34,22 +34,39 @@ import (
 var PrintTrace = true
 
 type Executor struct {
-	Vms        []evms.Evm
+	Vms        []*VM
 	PrintTrace bool
 }
 
-func NewExecutor(vms []evms.Evm, printTrace bool) *Executor {
+type VM struct {
+	evms.Evm
+	Path string
+}
+
+func (vm VM) Name() string {
+	return fmt.Sprintf("%s(%s)", vm.Evm.Name(), vm.Path)
+}
+
+func NewExecutor(vms []*VM, printTrace bool) *Executor {
 	return &Executor{
 		Vms:        vms,
 		PrintTrace: printTrace,
 	}
 }
 
+func (e *Executor) VMs() []evms.Evm {
+	var vms []evms.Evm
+	for _, vm := range e.Vms {
+		vms = append(vms, vm.Evm)
+	}
+	return vms
+}
+
 // Execute runs all tests in `dirName` and saves crashers in `outDir`
 func (e *Executor) Execute(dirName, outDir string, threadlimit int) error {
 	infos, err := ioutil.ReadDir(dirName)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "can't read %q", dirName)
 	}
 	errChan := make(chan error)
 	limit := limiter.NewConcurrencyLimiter(threadlimit)
@@ -58,12 +75,12 @@ func (e *Executor) Execute(dirName, outDir string, threadlimit int) error {
 	for i, info := range infos {
 		// All generated tests end in .json
 		if strings.HasSuffix(info.Name(), ".json") {
-			fmt.Printf("Executing test: %v of %v, %f per second \n", i/2, len(infos)/2, meter.Rate1())
+			fmt.Printf("Executing test: %d of %d, %f per second \n", i, len(infos), meter.Rate1())
 			meter.Mark(1)
 			name := info.Name()
 			job := func() {
 				if err := e.ExecuteFullTest(dirName, outDir, name, true); err != nil {
-					err := errors.Wrap(err, fmt.Sprintf("in file: %v", name))
+					err = errors.Wrapf(err, "in file %q", name)
 					fmt.Println(err)
 					//errChan <- err
 				}
@@ -77,7 +94,7 @@ func (e *Executor) Execute(dirName, outDir string, threadlimit int) error {
 		case err := <-errChan:
 			fmt.Println(err)
 		default:
-			// All tests sucessfully executed
+			// All tests are successfully executed
 			return nil
 		}
 	}
@@ -101,9 +118,9 @@ func (e *Executor) ExecuteFullTest(dirName, outDir, filename string, doPurge boo
 
 func (e *Executor) verifyAndPurge(traceFile, testName, outDir, testFile string, outputs [][]byte, doPurge bool) error {
 	if !e.Verify(traceFile, outputs) {
-		fmt.Printf("Test %v failed, dumping\n", testName)
+		fmt.Printf("Test %s failed, dumping\n", testName)
 		if err := dump(testName, outDir, e.Vms, outputs); err != nil {
-			return err
+			return errors.Wrapf(err, "in %s, test %s, file %s", outDir, testFile, testName)
 		}
 	} else {
 		if doPurge {
@@ -125,7 +142,7 @@ func (e *Executor) ExecuteTest(testName string) ([][]byte, error) {
 	for _, vm := range e.Vms {
 		buffer.Reset()
 		if _, err := vm.RunStateTest(testName, &buffer, false); err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "on %q on %s VM", testName, vm.Path)
 		}
 		buf = append(buf, buffer.Bytes())
 	}
@@ -146,19 +163,18 @@ func (e *Executor) Verify(traceName string, outputs [][]byte) bool {
 		}
 		ioReaders = append(ioReaders, bytes.NewBuffer(ref))
 	*/
-	return evms.CompareFiles(e.Vms, ioReaders)
+	return evms.CompareFiles(e.VMs(), ioReaders)
 }
 
 // dump writes outputs to a file in case of a verification problem
-func dump(filename, outdir string, vms []evms.Evm, outputs [][]byte) error {
+func dump(filename, outdir string, vms []*VM, outputs [][]byte) error {
+	var err error
+
 	for i, out := range outputs {
 		filename := fmt.Sprintf("%v/%v-%v-trace.jsonl", outdir, filename, vms[i].Name())
-		f, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
+		err = ioutil.WriteFile(filename, out, 0755)
 		if err != nil {
-			return err
-		}
-		if _, err := f.Write(out); err != nil {
-			return err
+			return errors.Wrapf(err, "can't dump. error while writing the file %q", filename)
 		}
 	}
 	return nil
