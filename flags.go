@@ -64,6 +64,10 @@ var (
 		Name:  "corpus",
 		Usage: "Number of corpus elements that should be created",
 	}
+	corpusMinimizeFlag = cli.BoolFlag{
+		Name:  "minimizeCorpus",
+		Usage: "If minimizeCorpus is set we run the corpus minimizer",
+	}
 	configFileFlag = cli.StringFlag{
 		Name:  "config",
 		Usage: "Path to the config file required to run FuzzyVM",

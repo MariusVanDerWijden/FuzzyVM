@@ -18,6 +18,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"fmt"
 	"io/ioutil"
@@ -50,6 +51,7 @@ func initApp() *cli.App {
 		execNoGen,
 		benchFlag,
 		corpusFlag,
+		corpusMinimizeFlag,
 		configFileFlag,
 	}
 	return app
@@ -74,6 +76,11 @@ func mainLoop(c *cli.Context) {
 		execThreads = c.GlobalInt(execThreadsFlag.Name)
 		configFile  = c.GlobalString(configFileFlag.Name)
 	)
+
+	if c.GlobalBool(corpusMinimizeFlag.Name) {
+		minimizeCorpus()
+		return
+	}
 
 	vms, err := getVMsFromConfig(configFile)
 	if err != nil {
@@ -201,10 +208,43 @@ func createCorpus(n int) {
 		if err != nil {
 			fmt.Printf("Error while creating corpus: %v\n", err)
 		}
-		filename := sha1.Sum(elem)
-		if err := ioutil.WriteFile(common.Bytes2Hex(filename[:]), elem, 0755); err != nil {
+		hash := sha1.Sum(elem)
+		filename := fmt.Sprintf("%v/%v", dir, common.Bytes2Hex(hash[:]))
+		if err := ioutil.WriteFile(filename, elem, 0755); err != nil {
 			fmt.Printf("Error while writing corpus element: %v\n", err)
 		}
+	}
+}
+
+func minimizeCorpus() {
+	const dir = "corpus"
+	ensureDirs(dir)
+	infos, err := ioutil.ReadDir(dirName)
+	if err != nil {
+		panic(err)
+	}
+	toDelete := make(map[string]struct{})
+	for i, info := range infos {
+		f, err := ioutil.ReadFile(info.Name())
+		if err != nil {
+			continue
+		}
+		for k, info2 := range infos {
+			if k == i {
+				continue
+			}
+			h, err := ioutil.ReadFile(info2.Name())
+			if err != nil {
+				continue
+			}
+			if bytes.HasPrefix(h, f) {
+				toDelete[info2.Name()] = struct{}{}
+			}
+		}
+	}
+	for name := range toDelete {
+		fmt.Printf("Removing corpus file: %v\n", name)
+		os.Remove(name)
 	}
 }
 
