@@ -16,9 +16,51 @@
 
 package fuzzer
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestFuzzer(t *testing.T) {
 	data := "asdf"
 	Fuzz([]byte(data))
+}
+
+func TestMinimizeProgram(t *testing.T) {
+	/*
+		// Only local test, should not be run in test pipeline
+		data := "asdf"
+		f := filler.NewFiller([]byte(data))
+		testMaker, _ := generator.GenerateProgram(f)
+		name := randTestName([]byte(data))
+		if err := testMaker.Fill(nil); err != nil {
+			panic(err)
+		}
+		// Save the test
+		test := testMaker.ToGeneralStateTest(name)
+		storeTest(test, name)
+		// minimize
+		minimized, err := minimizeProgram(testMaker, name)
+		if err != nil {
+			t.Error(err)
+		}
+		minTest := minimized.ToGeneralStateTest(name)
+		storeTest(minTest, name+"_min")
+	*/
+}
+
+func TestStoreTest(t *testing.T) {
+	/*
+		// Only local test, should not be run in test pipeline
+		data := "asdf"
+		f := filler.NewFiller([]byte(data))
+		testMaker, _ := generator.GenerateProgram(f)
+		name := randTestName([]byte(data))
+		if err := testMaker.Fill(nil); err != nil {
+			panic(err)
+		}
+		test := testMaker.ToGeneralStateTest(name)
+		storeTest(test, name)
+		storeTest(test, name+"a")
+		t.Fail()
+	*/
 }

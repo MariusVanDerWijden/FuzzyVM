@@ -18,14 +18,21 @@
 package fuzzer
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
+	"sort"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/tests"
 	"github.com/holiman/goevmlab/fuzzing"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
@@ -45,6 +52,11 @@ func Fuzz(data []byte) int {
 	f := filler.NewFiller(data)
 	testMaker, _ := generator.GenerateProgram(f)
 	name := randTestName(data)
+	// minimize test
+	minimized, err := minimizeProgram(testMaker, name)
+	if err == nil {
+		testMaker = minimized
+	}
 	// Execute the test and write out the resulting trace
 	var traceFile *os.File
 	if shouldTrace {
@@ -72,9 +84,63 @@ func setupTrace(name string) *os.File {
 	return traceFile
 }
 
+func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, error) {
+	original := new(bytes.Buffer)
+	if err := test.Fill(original); err != nil {
+		return nil, err
+	}
+	gstPtr := test.ToGeneralStateTest(name)
+	gst := (*gstPtr)
+	var addr common.Address
+	var code []byte
+	for ad, acc := range gst[name].Pre {
+		if len(acc.Code) > len(code) {
+			code = acc.Code
+			addr = ad
+		}
+	}
+	foundLength := sort.Search(len(code), func(i int) bool {
+		fmt.Printf("i: %v\n", i)
+		// Set the code
+		acc := gst[name].Pre[addr]
+		acc.Code = code[0:i]
+		gst[name].Pre[addr] = acc
+		// Run and see if the trace still matches
+		var gethStateTest tests.StateTest
+		data, err := json.Marshal(gst[name])
+		if err != nil {
+			panic(err)
+		}
+		if err := json.Unmarshal(data, &gethStateTest); err != nil {
+			panic(err)
+		}
+		newOutput := new(bytes.Buffer)
+		cfg := vm.Config{}
+		cfg.Debug = true
+		cfg.Tracer = vm.NewJSONLogger(&vm.LogConfig{}, newOutput)
+		subtest := gethStateTest.Subtests()[0]
+		gethStateTest.RunNoVerify(subtest, cfg, false)
+		return bytes.Equal(newOutput.Bytes(), original.Bytes())
+	})
+	if foundLength+100 < len(code) {
+		// Add some bytes to make it easier to proof differences in execution
+		foundLength += 100
+	}
+	test.SetCode(addr, code[0:foundLength])
+	return test, nil
+}
+
 // storeTest saves a testcase to disk
 func storeTest(test *fuzzing.GeneralStateTest, testName string) {
-	path := fmt.Sprintf("%v/%v.json", outputDir, testName)
+	hash := hash(test, testName)
+	path := fmt.Sprintf("%v/%v-%v.json", outputDir, testName, hash)
+	// check if the test is already on disk
+	if matches, err := filepath.Glob(fmt.Sprintf("%v/*-%v.json", outputDir, hash)); err != nil {
+		panic(err)
+	} else if len(matches) != 0 {
+		fmt.Printf("Duplicate test found\n")
+		return
+	}
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
 	if err != nil {
 		panic(fmt.Sprintf("Could not open test file %q: %v", testName, err))
@@ -93,4 +159,14 @@ func randTestName(data []byte) string {
 	seed := int64(binary.BigEndian.Uint64(seedData[:]))
 	rand := rand.New(rand.NewSource(time.Now().UnixNano() ^ seed))
 	return fmt.Sprintf("FuzzyVM-%v-%v", rand.Int31(), rand.Int31())
+}
+
+func hash(test *fuzzing.GeneralStateTest, name string) string {
+	h := sha3.New256()
+	encoder := json.NewEncoder(h)
+	if err := encoder.Encode(test); err != nil {
+		panic(fmt.Sprintf("Could not hash state test: %v", err))
+	}
+	hash := h.Sum(nil)
+	return common.Bytes2Hex(hash)
 }
