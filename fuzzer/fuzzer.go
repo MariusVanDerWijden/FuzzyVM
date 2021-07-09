@@ -102,7 +102,12 @@ func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, er
 	}
 	orgs := original.Bytes()
 	idx := strings.LastIndex(string(orgs), "{")
-	orgs = orgs[0 : idx-1]
+	if idx <= 0 {
+                idx = 0
+        } else {
+                idx -= 1
+        }
+	orgs = orgs[0 : idx]
 	foundLength := sort.Search(len(code), func(i int) bool {
 		// Set the code
 		acc := gst[name].Pre[addr]
@@ -125,8 +130,13 @@ func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, er
 		gethStateTest.RunNoVerify(subtest, cfg, false)
 		newB := newOutput.Bytes()
 		newIdx := strings.LastIndex(string(newB), "{")
+		if newIdx <= 0 {
+			newIdx = 0
+		} else {
+			newIdx -= 1
+		}
 		newB = newB[0 : newIdx-1]
-		fmt.Printf("%v: %v %v\n", i, len(newB), len(orgs))
+		//fmt.Printf("%v: %v %v\n", i, len(newB), len(orgs))
 		//fmt.Printf(string(newB))
 		return bytes.Equal(newB, orgs)
 	})
