@@ -171,7 +171,7 @@ func dump(filename, outdir string, vms []*VM, outputs [][]byte) error {
 	var err error
 
 	for i, out := range outputs {
-		filename := fmt.Sprintf("%v/%v-%v-trace.jsonl", outdir, filename, vms[i].Name())
+		filename := fmt.Sprintf("%v/%v-%v-trace.jsonl", outdir, filename, vms[i].Evm.Name())
 		err = ioutil.WriteFile(filename, out, 0755)
 		if err != nil {
 			return errors.Wrapf(err, "can't dump. error while writing the file %q", filename)

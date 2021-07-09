@@ -99,8 +99,9 @@ func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, er
 			addr = ad
 		}
 	}
+	orgBytes := original.Bytes()
 	foundLength := sort.Search(len(code), func(i int) bool {
-		fmt.Printf("i: %v\n", i)
+		//fmt.Printf("i: %v\n", i)
 		// Set the code
 		acc := gst[name].Pre[addr]
 		acc.Code = code[0:i]
@@ -120,7 +121,7 @@ func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, er
 		cfg.Tracer = vm.NewJSONLogger(&vm.LogConfig{}, newOutput)
 		subtest := gethStateTest.Subtests()[0]
 		gethStateTest.RunNoVerify(subtest, cfg, false)
-		return bytes.Equal(newOutput.Bytes(), original.Bytes())
+		return bytes.Equal(newOutput.Bytes(), orgBytes)
 	})
 	if foundLength+100 < len(code) {
 		// Add some bytes to make it easier to proof differences in execution
