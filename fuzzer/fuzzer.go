@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -99,9 +100,10 @@ func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, er
 			addr = ad
 		}
 	}
-	orgBytes := original.Bytes()
+	orgs := original.Bytes()
+	idx := strings.LastIndex(string(orgs), "{")
+	orgs = orgs[0 : idx-1]
 	foundLength := sort.Search(len(code), func(i int) bool {
-		//fmt.Printf("i: %v\n", i)
 		// Set the code
 		acc := gst[name].Pre[addr]
 		acc.Code = code[0:i]
@@ -121,7 +123,12 @@ func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, er
 		cfg.Tracer = vm.NewJSONLogger(&vm.LogConfig{}, newOutput)
 		subtest := gethStateTest.Subtests()[0]
 		gethStateTest.RunNoVerify(subtest, cfg, false)
-		return bytes.Equal(newOutput.Bytes(), orgBytes)
+		newB := newOutput.Bytes()
+		newIdx := strings.LastIndex(string(newB), "{")
+		newB = newB[0 : newIdx-1]
+		fmt.Printf("%v: %v %v\n", i, len(newB), len(orgs))
+		//fmt.Printf(string(newB))
+		return bytes.Equal(newB, orgs)
 	})
 	if foundLength+100 < len(code) {
 		// Add some bytes to make it easier to proof differences in execution

@@ -16,4 +16,4 @@ require (
 
 replace github.com/MariusVanDerWijden/FuzzyVM/filler => ./filler
 
-replace github.com/holiman/goevmlab => ./../goevmlab
+//replace github.com/holiman/goevmlab => ./../goevmlab

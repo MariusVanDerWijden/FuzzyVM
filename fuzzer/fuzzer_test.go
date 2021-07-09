@@ -28,7 +28,7 @@ func TestFuzzer(t *testing.T) {
 func TestMinimizeProgram(t *testing.T) {
 	/*
 		// Only local test, should not be run in test pipeline
-		data := "asdf"
+		data := "asdfadfasdfasdfasdfasdfasdfadsfldlafdsgoinsfandofaijdsf"
 		f := filler.NewFiller([]byte(data))
 		testMaker, _ := generator.GenerateProgram(f)
 		name := randTestName([]byte(data))
@@ -44,7 +44,9 @@ func TestMinimizeProgram(t *testing.T) {
 			t.Error(err)
 		}
 		minTest := minimized.ToGeneralStateTest(name)
-		storeTest(minTest, name+"_min")
+		_ = minTest
+		panic("adsf")
+		//storeTest(minTest, name+"_min")
 	*/
 }
 
