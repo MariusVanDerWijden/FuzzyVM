@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -58,18 +57,19 @@ func Fuzz(data []byte) int {
 	if err == nil {
 		testMaker = minimized
 	}
+	finalName := fmt.Sprintf("FuzzyVM-%v", hash(testMaker.ToGeneralStateTest("hashName")))
 	// Execute the test and write out the resulting trace
 	var traceFile *os.File
 	if shouldTrace {
-		traceFile = setupTrace(name)
+		traceFile = setupTrace(finalName)
 		defer traceFile.Close()
 	}
 	if err := testMaker.Fill(traceFile); err != nil {
 		panic(err)
 	}
 	// Save the test
-	test := testMaker.ToGeneralStateTest(name)
-	storeTest(test, name)
+	test := testMaker.ToGeneralStateTest(finalName)
+	storeTest(test, finalName)
 	if f.UsedUp() {
 		return 0
 	}
@@ -103,11 +103,11 @@ func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, er
 	orgs := original.Bytes()
 	idx := strings.LastIndex(string(orgs), "{")
 	if idx <= 0 {
-                idx = 0
-        } else {
-                idx -= 1
-        }
-	orgs = orgs[0 : idx]
+		idx = 0
+	} else {
+		idx -= 1
+	}
+	orgs = orgs[0:idx]
 	foundLength := sort.Search(len(code), func(i int) bool {
 		// Set the code
 		acc := gst[name].Pre[addr]
@@ -150,14 +150,12 @@ func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, er
 
 // storeTest saves a testcase to disk
 func storeTest(test *fuzzing.GeneralStateTest, testName string) {
-	hash := hash(test, testName)
-	path := fmt.Sprintf("%v/%v-%v.json", outputDir, testName, hash)
+	path := fmt.Sprintf("%v/%v.json", outputDir, testName)
 	// check if the test is already on disk
-	if matches, err := filepath.Glob(fmt.Sprintf("%v/*-%v.json", outputDir, hash)); err != nil {
+	if _, err := os.Stat(path); err == nil {
+		fmt.Println("Duplicate test found")
+	} else if !os.IsNotExist(err) {
 		panic(err)
-	} else if len(matches) != 0 {
-		fmt.Printf("Duplicate test found\n")
-		return
 	}
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
 	if err != nil {
@@ -179,7 +177,7 @@ func randTestName(data []byte) string {
 	return fmt.Sprintf("FuzzyVM-%v-%v", rand.Int31(), rand.Int31())
 }
 
-func hash(test *fuzzing.GeneralStateTest, name string) string {
+func hash(test *fuzzing.GeneralStateTest) string {
 	h := sha3.New256()
 	encoder := json.NewEncoder(h)
 	if err := encoder.Encode(test); err != nil {
