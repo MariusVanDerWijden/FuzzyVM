@@ -28,6 +28,7 @@ var basicStrategies = []Strategy{
 	new(returnDataGenerator),
 	new(returnGenerator),
 	new(pushGenerator),
+	new(hashAndStoreGenerator),
 }
 
 type opcodeGenerator struct{}
@@ -129,4 +130,22 @@ func (*pushGenerator) Execute(env Environment) {
 
 func (*pushGenerator) Importance() int {
 	return 4
+}
+
+type hashAndStoreGenerator struct{}
+
+func (*hashAndStoreGenerator) Execute(env Environment) {
+	env.p.Op(ops.RETURNDATASIZE)
+	env.p.Push(0)
+	env.p.Op(ops.MSIZE)
+	env.p.Op(ops.RETURNDATACOPY)
+	env.p.Op(ops.MSIZE)
+	env.p.Push(0)
+	env.p.Op(ops.SHA3)
+	env.p.Op(ops.DUP1)
+	env.p.Op(ops.SSTORE)
+}
+
+func (*hashAndStoreGenerator) Importance() int {
+	return 2
 }
