@@ -58,7 +58,7 @@ func (*jumpGenerator) Execute(env Environment) {
 			condition  = big.NewInt(0)
 		)
 		if shouldJump {
-			condition = env.f.BigInt()
+			condition = env.f.BigInt32()
 		}
 		// jumps if condition != 0
 		env.p.JumpIf(jumpdest, condition)

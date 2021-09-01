@@ -33,9 +33,9 @@ func (*identityCaller) call(p *program.Program, f *filler.Filler) error {
 		Address:   identityAddr,
 		InOffset:  0,
 		InSize:    uint32(len(data)),
-		OutOffset: uint32(f.Byte()),
-		OutSize:   uint32(f.Byte()),
-		Value:     f.BigInt(),
+		OutOffset: 0,
+		OutSize:   uint32(len(data)),
+		Value:     f.BigInt32(),
 	}
 	p.Mstore(data, 0)
 	CallRandomizer(p, f, c)

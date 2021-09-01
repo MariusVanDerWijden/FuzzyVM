@@ -48,7 +48,7 @@ func (*bigModExpCaller) call(p *program.Program, f *filler.Filler) error {
 		InSize:    uint32(len(data)),
 		OutOffset: 0,
 		OutSize:   64,
-		Value:     f.BigInt(),
+		Value:     f.BigInt32(),
 	}
 	CallRandomizer(p, f, c)
 	return nil
