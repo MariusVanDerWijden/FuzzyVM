@@ -92,10 +92,10 @@ func (*randomCallGenerator) Execute(env Environment) {
 		Gas:       env.f.GasInt(),
 		Address:   addr,
 		Value:     env.f.BigInt16(),
-		InOffset:  uint32(env.f.Uint16()),
-		InSize:    uint32(env.f.Uint16()),
-		OutOffset: uint32(env.f.Uint16()),
-		OutSize:   uint32(env.f.Uint16()),
+		InOffset:  uint32(env.f.MemInt().Uint64()),
+		InSize:    uint32(env.f.MemInt().Uint64()),
+		OutOffset: uint32(env.f.MemInt().Uint64()),
+		OutSize:   uint32(env.f.MemInt().Uint64()),
 	}
 	precompiles.CallRandomizer(env.p, env.f, c)
 }

@@ -46,7 +46,7 @@ func (*ecdsaCaller) call(p *program.Program, f *filler.Filler) error {
 		InSize:    uint32(len(sig)),
 		OutOffset: 0,
 		OutSize:   20,
-		Value:     f.BigInt(),
+		Value:     f.BigInt32(),
 	}
 	p.Mstore(sig, 0)
 	CallRandomizer(p, f, c)

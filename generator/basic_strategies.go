@@ -53,9 +53,9 @@ type memStorageGenerator struct{}
 func (*memStorageGenerator) Execute(env Environment) {
 	// Copy a part of memory into storage
 	var (
-		memStart  = int(env.f.Uint16())
-		memSize   = int(env.f.Uint16())
-		startSlot = int(env.f.Uint16())
+		memStart  = int(env.f.MemInt().Uint64())
+		memSize   = int(env.f.MemInt().Uint64())
+		startSlot = int(env.f.MemInt().Uint64())
 	)
 	// TODO MSTORE currently uses too much gas
 	env.p.MemToStorage(memStart, memSize, startSlot)
@@ -71,7 +71,7 @@ func (*mstoreGenerator) Execute(env Environment) {
 	// Store data into memory
 	var (
 		data     = env.f.ByteSlice256()
-		memStart = env.f.Uint32()
+		memStart = uint32(env.f.MemInt().Uint64())
 	)
 	env.p.Mstore(data, memStart)
 }
@@ -86,7 +86,7 @@ func (*sstoreGenerator) Execute(env Environment) {
 	// Store data in storage
 	var (
 		data = make([]byte, env.f.Byte()%32)
-		slot = env.f.Uint32()
+		slot = uint32(env.f.MemInt().Uint64())
 	)
 	env.p.Sstore(slot, data)
 }
@@ -111,8 +111,8 @@ type returnGenerator struct{}
 func (*returnGenerator) Execute(env Environment) {
 	// Returns with offset, len
 	var (
-		offset = uint32(env.f.Uint16())
-		len    = uint32(env.f.Uint16())
+		offset = uint32(env.f.MemInt().Uint64())
+		len    = uint32(env.f.MemInt().Uint64())
 	)
 	env.p.Return(offset, len)
 }

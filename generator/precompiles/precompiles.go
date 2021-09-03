@@ -55,6 +55,18 @@ type CallObj struct {
 
 // CallRandomizer calls an address either with the CALL, CALLCODE or STATICCALL opcode.
 func CallRandomizer(p *program.Program, f *filler.Filler, c CallObj) {
+	// modify call object
+	switch f.Byte() % 25 {
+	case 0:
+		c.InOffset = uint32(f.MemInt().Uint64())
+	case 1:
+		c.InSize = uint32(f.MemInt().Uint64())
+	case 2:
+		c.OutOffset = uint32(f.MemInt().Uint64())
+	case 3:
+		c.OutSize = uint32(f.MemInt().Uint64())
+	}
+
 	switch f.Byte() % 3 {
 	case 0:
 		p.Call(c.Gas, c.Address, c.Value, c.InOffset, c.InSize, c.OutOffset, c.OutSize)

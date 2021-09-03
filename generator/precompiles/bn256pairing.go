@@ -48,7 +48,7 @@ func (*bn256PairingCaller) call(p *program.Program, f *filler.Filler) error {
 		InSize:    inSize,
 		OutOffset: 0,
 		OutSize:   64,
-		Value:     f.BigInt(),
+		Value:     f.BigInt32(),
 	}
 	// Input to the precompile are a set of 64 bit bn256.G1 points and 128 bit bn256.G2 points.
 	for i := range curvePoints {
@@ -76,10 +76,10 @@ func pairing(rounds int, f *filler.Filler) ([]*bn256.G1, []*bn256.G2) {
 	// LHS: sum(x: 1->n: e(aMulx * G1, bMulx * G2))
 	for i := 0; i < int(rounds); i++ {
 		// aMul * G1
-		aMul := f.BigInt()
+		aMul := f.BigInt32()
 		pointG1 := new(bn256.G1).ScalarBaseMult(aMul)
 		// bMul * G2
-		bMul := f.BigInt()
+		bMul := f.BigInt32()
 		pointG2 := new(bn256.G2).ScalarBaseMult(bMul)
 		// append to pairing
 		curvePoints = append(curvePoints, pointG1)
@@ -106,11 +106,11 @@ func bloatPairing(a []*bn256.G1, b []*bn256.G2, f *filler.Filler) ([]*bn256.G1, 
 			if f.Bool() {
 				// set a to infinity
 				a[index] = new(bn256.G1).ScalarBaseMult(new(big.Int).SetInt64(0))
-				mul := f.BigInt()
+				mul := f.BigInt32()
 				b[index] = new(bn256.G2).ScalarBaseMult(mul)
 			} else {
 				// set b to infinity
-				mul := f.BigInt()
+				mul := f.BigInt32()
 				a[index] = new(bn256.G1).ScalarBaseMult(mul)
 				b[index] = new(bn256.G2).ScalarBaseMult(new(big.Int).SetInt64(0))
 			}
