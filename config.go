@@ -39,6 +39,9 @@ func getVMsFromConfig(file string) ([]*executor.VM, error) {
 	for _, s := range conf.Geth {
 		vms = append(vms, &executor.VM{evms.NewGethEVM(s), s})
 	}
+	for _, s := range conf.Erigon {
+		vms = append(vms, &executor.VM{evms.NewGethEVM(s), s})
+	}
 	for _, s := range conf.Nethermind {
 		vms = append(vms, &executor.VM{evms.NewNethermindVM(s), s})
 	}
@@ -56,6 +59,7 @@ func getVMsFromConfig(file string) ([]*executor.VM, error) {
 
 type config struct {
 	Geth         []string
+	Erigon       []string
 	Besu         []string
 	OpenEthereum []string
 	Nethermind   []string
