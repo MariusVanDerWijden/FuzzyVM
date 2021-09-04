@@ -69,7 +69,7 @@ func (*blake2fCaller) call(p *program.Program, f *filler.Filler) error {
 		InSize:    213,
 		OutOffset: 0,
 		OutSize:   64,
-		Value:     f.BigInt(),
+		Value:     f.BigInt32(),
 	}
 	p.Mstore(input, 0)
 	CallRandomizer(p, f, c)

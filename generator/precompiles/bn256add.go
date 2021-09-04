@@ -28,9 +28,9 @@ var bn256addAddr = common.HexToAddress("0x6")
 type bn256Caller struct{}
 
 func (*bn256Caller) call(p *program.Program, f *filler.Filler) error {
-	k := f.BigInt()
+	k := f.BigInt32()
 	point := new(bn256.G1).ScalarBaseMult(k)
-	k2 := f.BigInt()
+	k2 := f.BigInt32()
 	point2 := new(bn256.G1).ScalarBaseMult(k2)
 	c := CallObj{
 		Gas:       f.GasInt(),
@@ -39,7 +39,7 @@ func (*bn256Caller) call(p *program.Program, f *filler.Filler) error {
 		InSize:    128,
 		OutOffset: 0,
 		OutSize:   64,
-		Value:     f.BigInt(),
+		Value:     f.BigInt32(),
 	}
 	p.Mstore(point.Marshal(), 0)
 	p.Mstore(point2.Marshal(), 64)

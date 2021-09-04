@@ -28,9 +28,9 @@ var bn256mulAddr = common.HexToAddress("0x7")
 type bn256MulCaller struct{}
 
 func (*bn256MulCaller) call(p *program.Program, f *filler.Filler) error {
-	k := f.BigInt()
+	k := f.BigInt32()
 	point := new(bn256.G1).ScalarBaseMult(k)
-	scalar := f.BigInt()
+	scalar := f.BigInt32()
 	c := CallObj{
 		Gas:       f.GasInt(),
 		Address:   bn256mulAddr,
@@ -38,7 +38,7 @@ func (*bn256MulCaller) call(p *program.Program, f *filler.Filler) error {
 		InSize:    96,
 		OutOffset: 0,
 		OutSize:   64,
-		Value:     f.BigInt(),
+		Value:     f.BigInt32(),
 	}
 	// 64 bytes curve point
 	p.Mstore(point.Marshal(), 0)
