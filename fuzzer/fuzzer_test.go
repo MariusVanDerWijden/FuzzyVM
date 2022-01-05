@@ -17,37 +17,43 @@
 package fuzzer
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/MariusVanDerWijden/FuzzyVM/filler"
+	"github.com/MariusVanDerWijden/FuzzyVM/generator"
 )
 
 func TestFuzzer(t *testing.T) {
-	data := "asdf"
+	data := "asdfasdfasdfasdfasdfasdfasdffasdfasdfasdfasdfasd"
 	Fuzz([]byte(data))
+	panic("adaf")
 }
 
 func TestMinimizeProgram(t *testing.T) {
-	/*
-		// Only local test, should not be run in test pipeline
-		data := "asdfadfasdfasdfasdfasdfasdfadsfldlafdsgoinsfandofaijdsf"
-		f := filler.NewFiller([]byte(data))
-		testMaker, _ := generator.GenerateProgram(f)
-		name := randTestName([]byte(data))
-		if err := testMaker.Fill(nil); err != nil {
-			panic(err)
-		}
-		// Save the test
-		test := testMaker.ToGeneralStateTest(name)
-		storeTest(test, name)
-		// minimize
-		minimized, err := minimizeProgram(testMaker, name)
-		if err != nil {
-			t.Error(err)
-		}
-		minTest := minimized.ToGeneralStateTest(name)
-		_ = minTest
-		panic("adsf")
-		//storeTest(minTest, name+"_min")
-	*/
+
+	// Only local test, should not be run in test pipeline
+	data := "asdfadfasdfasdfasdfasdfasdfadsfldlafdsgoinsfandofaijdsf"
+	f := filler.NewFiller([]byte(data))
+	testMaker, _ := generator.GenerateProgram(f)
+	name := randTestName([]byte(data))
+	if err := testMaker.Fill(nil); err != nil {
+		panic(err)
+	}
+	// Save the test
+	test := testMaker.ToGeneralStateTest(name)
+	storeTest(test, name)
+	// minimize
+	minimized, err := minimizeProgram(testMaker, name)
+	if err != nil {
+		t.Error(err)
+	}
+	minTest := minimized.ToGeneralStateTest(name)
+	_ = minTest
+	fmt.Printf("%v", minTest)
+	//panic("adsf")
+	storeTest(minTest, name+"_min")
+
 }
 
 func TestStoreTest(t *testing.T) {

@@ -141,7 +141,7 @@ func (*hashAndStoreGenerator) Execute(env Environment) {
 	env.p.Op(ops.RETURNDATACOPY)
 	env.p.Op(ops.MSIZE)
 	env.p.Push(0)
-	env.p.Op(ops.SHA3)
+	env.p.Op(ops.KECCAK256)
 	env.p.Op(ops.DUP1)
 	env.p.Op(ops.SSTORE)
 }

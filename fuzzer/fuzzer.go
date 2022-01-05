@@ -125,7 +125,7 @@ func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, er
 		newOutput := new(bytes.Buffer)
 		cfg := vm.Config{}
 		cfg.Debug = true
-		cfg.Tracer = vm.NewJSONLogger(&vm.LogConfig{}, newOutput)
+		//cfg.Tracer = vm.NewJSONLogger(&vm.LogConfig{}, newOutput)
 		subtest := gethStateTest.Subtests()[0]
 		gethStateTest.RunNoVerify(subtest, cfg, false)
 		newB := newOutput.Bytes()
@@ -135,7 +135,7 @@ func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, er
 		} else {
 			newIdx -= 1
 		}
-		newB = newB[0 : newIdx-1]
+		newB = newB[0:newIdx]
 		//fmt.Printf("%v: %v %v\n", i, len(newB), len(orgs))
 		//fmt.Printf(string(newB))
 		return bytes.Equal(newB, orgs)
