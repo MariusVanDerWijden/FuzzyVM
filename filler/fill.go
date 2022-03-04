@@ -113,7 +113,7 @@ func (f *Filler) GasInt() *big.Int {
 	return i.Mod(i, big.NewInt(20000000))
 }
 
-// GasInt returns a new big int to be used as a memory or offset value.
+// MemInt returns a new big int to be used as a memory or offset value.
 // With probability 252/255 its in [0, 256].
 // With probability 1/255 its in [0, 2^32].
 // With probability 1/255 its in [0, 2^64].
