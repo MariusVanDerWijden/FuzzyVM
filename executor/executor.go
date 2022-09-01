@@ -88,7 +88,7 @@ func (e *Executor) Execute(dirName, outDir string, threadlimit int) error {
 			limit.Execute(job)
 		}
 	}
-	limit.Wait()
+	limit.WaitAndClose()
 	for {
 		select {
 		case err := <-errChan:

@@ -79,7 +79,7 @@ func SampleLengthCorpus(N int) []int {
 		}
 		limit.Execute(fn)
 	}
-	limit.Wait()
+	limit.WaitAndClose()
 	for i := 0; i < N; i++ {
 		res = append(res, <-resChan)
 	}

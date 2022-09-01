@@ -17,6 +17,8 @@
 package precompiles
 
 import (
+	"encoding/binary"
+
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/holiman/goevmlab/program"
@@ -55,11 +57,7 @@ func (*bigModExpCaller) call(p *program.Program, f *filler.Filler) error {
 }
 
 func int32ToByte(a int) []byte {
-	au := uint32(a)
 	res := make([]byte, 4)
-	res[0] = byte(au)
-	res[1] = byte(au >> 8)
-	res[2] = byte(au >> 16)
-	res[3] = byte(au >> 24)
+	binary.BigEndian.PutUint32(res, uint32(a))
 	return res
 }
