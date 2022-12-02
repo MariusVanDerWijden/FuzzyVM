@@ -30,6 +30,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/eth/tracers/logger"
 	"github.com/ethereum/go-ethereum/tests"
 	"github.com/holiman/goevmlab/fuzzing"
 	"golang.org/x/crypto/sha3"
@@ -125,7 +126,7 @@ func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, er
 		newOutput := new(bytes.Buffer)
 		cfg := vm.Config{}
 		cfg.Debug = true
-		//cfg.Tracer = vm.NewJSONLogger(&vm.LogConfig{}, newOutput)
+		cfg.Tracer = logger.NewJSONLogger(&logger.Config{}, newOutput)
 		subtest := gethStateTest.Subtests()[0]
 		gethStateTest.RunNoVerify(subtest, cfg, false)
 		newB := newOutput.Bytes()
