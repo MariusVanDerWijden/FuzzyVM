@@ -1,5 +1,0 @@
-Geth = ["/root/go-ethereum/build/bin/evm"]
-OpenEthereum = ["/root/openethereum/target/release/openethereum-evm"]
-Nethermind = ["/root/nethermind/src/Nethermind/Nethermind.State.Test.Runner/bin/Release/net5.0/linux-x64/publish/nethtest"]
-Besu = ["/root/besu/ethereum/evmtool/build/install/evmtool/bin/evm"]
-Aleth = []
