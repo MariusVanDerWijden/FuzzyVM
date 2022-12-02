@@ -16,7 +16,11 @@
 
 package main
 
-import "github.com/urfave/cli/v2"
+import (
+	"runtime"
+
+	"github.com/urfave/cli/v2"
+)
 
 var (
 	countFlag = &cli.IntFlag{
@@ -26,7 +30,7 @@ var (
 
 	threadsFlag = &cli.IntFlag{
 		Name:  "threads",
-		Usage: "Number of generator threads started (default = 1)",
-		Value: 1,
+		Usage: "Number of generator threads started (default = NUMCPU)",
+		Value: runtime.NumCPU(),
 	}
 )

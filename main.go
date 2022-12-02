@@ -196,13 +196,14 @@ func ensureDirs(dirs ...string) {
 	for _, dir := range dirs {
 		_, err := os.Stat(dir)
 		if err != nil {
-			fmt.Printf("Error while using os.Stat dir %q: %v\n", dir, err)
-
 			if os.IsNotExist(err) {
+				fmt.Printf("Creating directory: %v", dir)
 				if err = os.Mkdir(dir, 0777); err != nil {
 					fmt.Printf("Error while making the dir %q: %v\n", dir, err)
 					return
 				}
+			} else {
+				fmt.Printf("Error while using os.Stat dir %q: %v\n", dir, err)
 			}
 		}
 	}
