@@ -202,7 +202,7 @@ func ensureDirs(dirs ...string) {
 		_, err := os.Stat(dir)
 		if err != nil {
 			if os.IsNotExist(err) {
-				fmt.Printf("Creating directory: %v", dir)
+				fmt.Printf("Creating directory: %v\n", dir)
 				if err = os.Mkdir(dir, 0777); err != nil {
 					fmt.Printf("Error while making the dir %q: %v\n", dir, err)
 					return
