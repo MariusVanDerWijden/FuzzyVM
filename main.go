@@ -127,7 +127,12 @@ func corpus(c *cli.Context) error {
 
 func build(c *cli.Context) error {
 	cmdName := "go-fuzz-build"
-	cmd := exec.Command(cmdName)
+	// ignore x/exp/rand, otherwise the build will fail, see also https://github.com/dvyukov/go-fuzz/issues/331
+	args := []string{
+		"-preserve",
+		"golang.org/x/exp/rand",
+	}
+	cmd := exec.Command(cmdName, args...)
 	cmd.Dir = "fuzzer"
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
