@@ -88,8 +88,8 @@ func initApp() *cli.App {
 var app = initApp()
 
 const (
-	dirName = "out"
-	outDir  = "crashes"
+	outputRootDir = "out"
+	crashesDir    = "crashes"
 )
 
 func main() {
@@ -144,7 +144,14 @@ func build(c *cli.Context) error {
 }
 
 func run(c *cli.Context) error {
-	ensureDirs(dirName, outDir)
+	directories := []string{
+		outputRootDir,
+		crashesDir,
+	}
+	for i := 0; i < 256; i++ {
+		directories = append(directories, fmt.Sprintf("%v/%v", outputRootDir, common.Bytes2Hex([]byte{byte(i)})))
+	}
+	ensureDirs(directories...)
 	genThreads := c.Int(threadsFlag.Name)
 	cmd := startGenerator(genThreads)
 	return cmd.Wait()
@@ -165,7 +172,7 @@ func startGenerator(genThreads int) *exec.Cmd {
 func minimizeCorpus(c *cli.Context) error {
 	const dir = "corpus"
 	ensureDirs(dir)
-	infos, err := ioutil.ReadDir(dirName)
+	infos, err := ioutil.ReadDir(outputRootDir)
 	if err != nil {
 		return err
 	}

@@ -58,7 +58,8 @@ func Fuzz(data []byte) int {
 	if err == nil {
 		testMaker = minimized
 	}
-	finalName := fmt.Sprintf("FuzzyVM-%v", hash(testMaker.ToGeneralStateTest("hashName")))
+	hashed := hash(testMaker.ToGeneralStateTest("hashName"))
+	finalName := fmt.Sprintf("FuzzyVM-%v", common.Bytes2Hex(hashed))
 	// Execute the test and write out the resulting trace
 	var traceFile *os.File
 	if shouldTrace {
@@ -70,7 +71,9 @@ func Fuzz(data []byte) int {
 	}
 	// Save the test
 	test := testMaker.ToGeneralStateTest(finalName)
-	storeTest(test, finalName)
+	if storeTest(test, hashed, finalName) {
+		return 0
+	}
 	if f.UsedUp() {
 		return 0
 	}
@@ -150,11 +153,13 @@ func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, er
 }
 
 // storeTest saves a testcase to disk
-func storeTest(test *fuzzing.GeneralStateTest, testName string) {
-	path := fmt.Sprintf("%v/%v.json", outputDir, testName)
+// returns true if a duplicate test was found
+func storeTest(test *fuzzing.GeneralStateTest, hashed []byte, testName string) bool {
+	path := fmt.Sprintf("%v/%02x/%v.json", outputDir, hashed[0], testName)
 	// check if the test is already on disk
 	if _, err := os.Stat(path); err == nil {
 		fmt.Println("Duplicate test found")
+		return true
 	} else if !os.IsNotExist(err) {
 		panic(err)
 	}
@@ -168,6 +173,7 @@ func storeTest(test *fuzzing.GeneralStateTest, testName string) {
 	if err = encoder.Encode(test); err != nil {
 		panic(fmt.Sprintf("Could not encode state test %q: %v", testName, err))
 	}
+	return false
 }
 
 func randTestName(data []byte) string {
@@ -178,12 +184,11 @@ func randTestName(data []byte) string {
 	return fmt.Sprintf("FuzzyVM-%v-%v", rand.Int31(), rand.Int31())
 }
 
-func hash(test *fuzzing.GeneralStateTest) string {
+func hash(test *fuzzing.GeneralStateTest) []byte {
 	h := sha3.New256()
 	encoder := json.NewEncoder(h)
 	if err := encoder.Encode(test); err != nil {
 		panic(fmt.Sprintf("Could not hash state test: %v", err))
 	}
-	hash := h.Sum(nil)
-	return common.Bytes2Hex(hash)
+	return h.Sum(nil)
 }
