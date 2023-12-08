@@ -16,8 +16,6 @@ git clone git@github.com:MariusVanDerWijden/FuzzyVM.git
 cd FuzzyVM
 # Build the binary
 go build
-# Create the fuzz-test generator as follows:
-./FuzzyVM build
 # Create an initial corpus
 ./FuzzyVM corpus --count 100  
 # Run the fuzzer
