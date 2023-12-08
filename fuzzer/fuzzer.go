@@ -42,8 +42,20 @@ import (
 
 var (
 	outputDir   = "out"
+	EnvKey      = "FUZZYDIR"
 	shouldTrace = false
 )
+
+// SetFuzzyVMDir sets the output directory for FuzzyVM
+// If the environment variable FUZZYDIR is set, the output directory
+// will be set to that, otherwise it will be set to a temp dir (for unit tests)
+func SetFuzzyVMDir() {
+	if dir, ok := os.LookupEnv(EnvKey); ok {
+		outputDir = dir
+	} else {
+		outputDir = os.TempDir()
+	}
+}
 
 // Fuzz is the entry point for go-fuzz
 func Fuzz(data []byte) int {
