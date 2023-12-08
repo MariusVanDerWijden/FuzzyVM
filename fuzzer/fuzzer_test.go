@@ -18,11 +18,67 @@ package fuzzer
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
+	"github.com/ethereum/go-ethereum/common"
 )
+
+func init() {
+	outputDir = os.TempDir()
+	var directories []string
+	for i := 0; i < 256; i++ {
+		directories = append(directories, fmt.Sprintf("%v/%v", outputDir, common.Bytes2Hex([]byte{byte(i)})))
+	}
+	ensureDirs(directories...)
+}
+
+func ensureDirs(dirs ...string) {
+	for _, dir := range dirs {
+		_, err := os.Stat(dir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				fmt.Printf("Creating directory: %v\n", dir)
+				if err = os.Mkdir(dir, 0777); err != nil {
+					fmt.Printf("Error while making the dir %q: %v\n", dir, err)
+					return
+				}
+			} else {
+				fmt.Printf("Error while using os.Stat dir %q: %v\n", dir, err)
+			}
+		}
+	}
+}
+
+func readCorpus() []string {
+	defaultDir := "./../corpus/"
+	entries, err := os.ReadDir(defaultDir)
+	if err != nil {
+		fmt.Printf("Error reading corpus directory: %v\n", err)
+	}
+	res := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		corpus, err := os.ReadFile(filepath.Join(defaultDir, entry.Name()))
+		if err != nil {
+			fmt.Printf("Error reading corpus entry: %v\n", err)
+		}
+		res = append(res, string(corpus))
+	}
+	return res
+}
+
+func FuzzVM(f *testing.F) {
+	corpus := readCorpus()
+	for _, elem := range corpus {
+		f.Add([]byte(elem))
+	}
+	f.Fuzz(func(t *testing.T, a []byte) {
+		Fuzz(a)
+	})
+}
 
 func TestFuzzer(t *testing.T) {
 	data := "asdfasdfasdfasdfasdfasdfasdffasdfasdfasdfasdfasd"
@@ -40,7 +96,8 @@ func TestMinimizeProgram(t *testing.T) {
 	}
 	// Save the test
 	test := testMaker.ToGeneralStateTest(name)
-	storeTest(test, name)
+	hashed := hash(testMaker.ToGeneralStateTest("hashName"))
+	storeTest(test, hashed, name)
 	// minimize
 	minimized, err := minimizeProgram(testMaker, name)
 	if err != nil {
@@ -49,5 +106,6 @@ func TestMinimizeProgram(t *testing.T) {
 	minTest := minimized.ToGeneralStateTest(name)
 	_ = minTest
 	fmt.Printf("%v", minTest)
-	storeTest(minTest, name+"_min")
+	minHashed := hash(testMaker.ToGeneralStateTest("hashName"))
+	storeTest(minTest, minHashed, name+"_min")
 }

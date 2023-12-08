@@ -28,7 +28,7 @@ import (
 )
 
 var (
-	fork              = "Shanghai"
+	fork              = "Cancun"
 	sender            = common.HexToAddress("a94f5374fce5edbc8e2a8697c15331677e6ebf0b")
 	sk                = hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
 	recursionLevel    = 0
@@ -89,6 +89,7 @@ func createGstMaker(fill *filler.Filler, code []byte) *fuzzing.GstMaker {
 		GasPrice:   big.NewInt(0x80),
 		To:         dest.Hex(),
 		PrivateKey: sk,
+		Sender:     sender,
 	}
 	gst.SetTx(tx)
 	return gst
