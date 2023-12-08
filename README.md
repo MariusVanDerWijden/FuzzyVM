@@ -5,7 +5,7 @@ FuzzyVM creates state tests that can be used to differential fuzz EVM implementa
 It only focus on the test generation part, the test execution is handled by [goevmlab](https://github.com/holiman/goevmlab).
 
 ## Environment
-You need to have golang, go-fuzz, go-fuzz-build, and go-ethereum installed
+You need to have golang and go-ethereum installed
 
 ## Install instructions
 
@@ -16,8 +16,6 @@ git clone git@github.com:MariusVanDerWijden/FuzzyVM.git
 cd FuzzyVM
 # Build the binary
 go build
-# Create the fuzz-test generator as follows:
-./FuzzyVM build
 # Create an initial corpus
 ./FuzzyVM corpus --count 100  
 # Run the fuzzer
