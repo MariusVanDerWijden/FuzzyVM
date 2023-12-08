@@ -28,7 +28,7 @@ import (
 )
 
 func init() {
-	outputDir = os.TempDir()
+	SetFuzzyVMDir()
 	var directories []string
 	for i := 0; i < 256; i++ {
 		directories = append(directories, fmt.Sprintf("%v/%v", outputDir, common.Bytes2Hex([]byte{byte(i)})))

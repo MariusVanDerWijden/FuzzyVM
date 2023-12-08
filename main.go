@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/urfave/cli/v2"
 
@@ -141,6 +142,14 @@ func startGenerator(genThreads int) *exec.Cmd {
 	cmd := exec.Command(cmdName, "test", "--fuzz", target, "--parallel", fmt.Sprint(genThreads), dir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	// Set the output directory
+	path, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	directory := filepath.Join(path, outputRootDir)
+	env := append(os.Environ(), fmt.Sprintf("%v=%v", fuzzer.EnvKey, directory))
+	cmd.Env = env
 	if err := cmd.Start(); err != nil {
 		panic(err)
 	}
