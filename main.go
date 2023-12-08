@@ -138,7 +138,8 @@ func build(c *cli.Context) error {
 	cmd.Stderr = os.Stderr
 	// We have to disable CGO
 	cgo := "CGO_ENABLED=0"
-	env := append(os.Environ(), cgo)
+	goarch := "GOARCH=amd64" // on Apple Silicon, the build fails with GOARCH=arm64
+	env := append(os.Environ(), cgo, goarch)
 	cmd.Env = env
 	return cmd.Run()
 }
