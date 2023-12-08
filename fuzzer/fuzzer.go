@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/eth/tracers/logger"
 	"github.com/ethereum/go-ethereum/tests"
@@ -128,10 +129,9 @@ func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, er
 		}
 		newOutput := new(bytes.Buffer)
 		cfg := vm.Config{}
-		cfg.Debug = true
 		cfg.Tracer = logger.NewJSONLogger(&logger.Config{}, newOutput)
 		subtest := gethStateTest.Subtests()[0]
-		gethStateTest.RunNoVerify(subtest, cfg, false)
+		gethStateTest.RunNoVerify(subtest, cfg, false, rawdb.HashScheme)
 		newB := newOutput.Bytes()
 		newIdx := strings.LastIndex(string(newB), "{")
 		if newIdx <= 0 {
