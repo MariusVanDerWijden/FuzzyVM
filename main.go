@@ -56,12 +56,6 @@ var minCorpusCommand = &cli.Command{
 	Action: minimizeCorpus,
 }
 
-var buildCommand = &cli.Command{
-	Name:   "build",
-	Usage:  "Builds the fuzzer",
-	Action: build,
-}
-
 var runCommand = &cli.Command{
 	Name:   "run",
 	Usage:  "Runs the fuzzer",
@@ -79,7 +73,6 @@ func initApp() *cli.App {
 		benchCommand,
 		corpusCommand,
 		minCorpusCommand,
-		buildCommand,
 		runCommand,
 	}
 	return app
@@ -125,24 +118,6 @@ func corpus(c *cli.Context) error {
 	return nil
 }
 
-func build(c *cli.Context) error {
-	cmdName := "go-fuzz-build"
-	// ignore x/exp/rand, otherwise the build will fail, see also https://github.com/dvyukov/go-fuzz/issues/331
-	args := []string{
-		"-preserve",
-		"golang.org/x/exp/rand",
-	}
-	cmd := exec.Command(cmdName, args...)
-	cmd.Dir = "fuzzer"
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	// We have to disable CGO
-	cgo := "CGO_ENABLED=0"
-	env := append(os.Environ(), cgo)
-	cmd.Env = env
-	return cmd.Run()
-}
-
 func run(c *cli.Context) error {
 	directories := []string{
 		outputRootDir,
@@ -158,9 +133,12 @@ func run(c *cli.Context) error {
 }
 
 func startGenerator(genThreads int) *exec.Cmd {
-	cmdName := "go-fuzz"
-	dir := "./fuzzer/fuzzer-fuzz.zip"
-	cmd := exec.Command(cmdName, "--bin", dir, "--procs", fmt.Sprint(genThreads))
+	var (
+		cmdName = "go"
+		target  = "FuzzVM"
+		dir     = "./fuzzer/..."
+	)
+	cmd := exec.Command(cmdName, "test", "--fuzz", target, "--parallel", fmt.Sprint(genThreads), dir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
