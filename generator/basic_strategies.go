@@ -25,10 +25,15 @@ var basicStrategies = []Strategy{
 	new(memStorageGenerator),
 	new(mstoreGenerator),
 	new(sstoreGenerator),
+	new(tstoreGenerator),
 	new(returnDataGenerator),
 	new(returnGenerator),
 	new(pushGenerator),
 	new(hashAndStoreGenerator),
+	new(mloadGenerator),
+	new(sloadGenerator),
+	new(tloadGenerator),
+	new(blobhashGenerator),
 }
 
 type opcodeGenerator struct{}
@@ -95,6 +100,21 @@ func (*sstoreGenerator) Importance() int {
 	return 3
 }
 
+type tstoreGenerator struct{}
+
+func (*tstoreGenerator) Execute(env Environment) {
+	// Store data in storage
+	var (
+		data = make([]byte, env.f.Byte()%32)
+		slot = uint32(env.f.MemInt().Uint64())
+	)
+	env.p.Tstore(slot, data)
+}
+
+func (*tstoreGenerator) Importance() int {
+	return 3
+}
+
 type returnDataGenerator struct{}
 
 func (*returnDataGenerator) Execute(env Environment) {
@@ -148,4 +168,52 @@ func (*hashAndStoreGenerator) Execute(env Environment) {
 
 func (*hashAndStoreGenerator) Importance() int {
 	return 2
+}
+
+type mloadGenerator struct{}
+
+func (*mloadGenerator) Execute(env Environment) {
+	offset := uint32(env.f.MemInt().Uint64())
+	env.p.Push(offset)
+	env.p.Op(ops.MLOAD)
+}
+
+func (*mloadGenerator) Importance() int {
+	return 1
+}
+
+type sloadGenerator struct{}
+
+func (*sloadGenerator) Execute(env Environment) {
+	offset := uint32(env.f.MemInt().Uint64())
+	env.p.Push(offset)
+	env.p.Op(ops.SLOAD)
+}
+
+func (*sloadGenerator) Importance() int {
+	return 1
+}
+
+type tloadGenerator struct{}
+
+func (*tloadGenerator) Execute(env Environment) {
+	offset := uint32(env.f.MemInt().Uint64())
+	env.p.Push(offset)
+	env.p.Op(ops.TLOAD)
+}
+
+func (*tloadGenerator) Importance() int {
+	return 1
+}
+
+type blobhashGenerator struct{}
+
+func (*blobhashGenerator) Execute(env Environment) {
+	offset := uint32(env.f.MemInt().Uint64())
+	env.p.Push(offset)
+	env.p.Op(ops.BLOBHASH)
+}
+
+func (*blobhashGenerator) Importance() int {
+	return 1
 }
