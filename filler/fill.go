@@ -130,6 +130,20 @@ func (f *Filler) MemInt() *big.Int {
 	return big.NewInt(int64(f.Byte()))
 }
 
+// SmallInt returns a new big int to be used as a memory or offset value.
+// With probability 250/255 its in [0, 16].
+// With probability 4/255 its in [0, 255].
+// With probability 1/255 its in [0, 512].
+func (f *Filler) SmallInt() int {
+	b := f.Byte()
+	if b <= 250 {
+		return int(f.Byte() % 16)
+	} else if b == 255 {
+		return int(f.Byte()) + int(f.Byte())
+	}
+	return int(f.Byte())
+}
+
 // ByteSlice returns a byteslice with `items` values.
 func (f *Filler) ByteSlice(items int) []byte {
 	// TODO (MariusVanDerWijden) this can be done way more efficiently
