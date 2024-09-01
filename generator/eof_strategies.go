@@ -40,6 +40,8 @@ func randomSubContainer(f *filler.Filler, codeSize int, level int) *vm.Container
 	}
 	// Setup Data
 	_, data := GenerateProgram(f)
+	// TODO make this optional
+	data = removeInvalidEOFOpcodes(data)
 	codeSize += len(data)
 	// Setup Subcontainers
 	subCLen := f.SmallInt()
@@ -79,4 +81,34 @@ func RandomFunctionMetadata(f *filler.Filler) *vm.FunctionMetadata {
 		Output:         f.Byte(),
 		MaxStackHeight: f.Uint16(),
 	}
+}
+
+func removeInvalidEOFOpcodes(input []byte) []byte {
+	output := make([]byte, 0, len(input))
+	for _, in := range input {
+		switch vm.OpCode(in) {
+		case vm.CALL, vm.CALLCODE:
+			output = append(output, byte(vm.EXTCALL))
+		case vm.DELEGATECALL:
+			output = append(output, byte(vm.EXTDELEGATECALL))
+		case vm.STATICCALL:
+			output = append(output, byte(vm.EXTSTATICCALL))
+		case vm.JUMP:
+			output = append(output, byte(vm.RJUMP))
+		case vm.JUMPI:
+			output = append(output, byte(vm.RJUMPI))
+		case vm.CREATE, vm.CREATE2:
+			output = append(output, byte(vm.EOFCREATE))
+		case vm.CODESIZE, vm.EXTCODESIZE:
+			output = append(output, byte(vm.DATASIZE))
+		case vm.CODECOPY, vm.EXTCODECOPY:
+			output = append(output, byte(vm.DATACOPY))
+		case vm.SELFDESTRUCT, vm.PC, vm.GAS, vm.EXTCODEHASH:
+			// ignore
+			continue
+		default:
+			output = append(output, in)
+		}
+	}
+	return output
 }
