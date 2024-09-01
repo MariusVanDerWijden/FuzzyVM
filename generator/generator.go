@@ -23,6 +23,7 @@ import (
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/goevmlab/fuzzing"
 	"github.com/holiman/goevmlab/program"
 )
@@ -33,6 +34,8 @@ var (
 	sk                = hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
 	recursionLevel    = 0
 	maxRecursionLevel = 10
+	maxCodeSize       = params.MaxInitCodeSize
+	maxContainerLevel = 5
 	minJumpDistance   = 10
 )
 
@@ -56,6 +59,10 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 		strategy := selectStrat(rnd, strategies)
 		// Execute the strategy
 		strategy.Execute(env)
+		// Check that we are still within (or barely out of) code size limits
+		if len(env.p.Bytecode()) > params.MaxInitCodeSize+1000 {
+			break
+		}
 	}
 	code := env.jumptable.InsertJumps(env.p.Bytecode())
 	return createGstMaker(f, code), code
