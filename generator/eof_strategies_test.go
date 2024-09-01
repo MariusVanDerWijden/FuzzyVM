@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
@@ -15,14 +16,16 @@ func FuzzEOFGenerator(f *testing.F) {
 		newCon := new(vm.Container)
 		if err := newCon.UnmarshalBinary(container.MarshalBinary(), true); err == nil {
 			if err := newCon.ValidateCode(&jt, true); err == nil {
-				panic(err)
+				if len(newCon.Code) > 0 && len(newCon.Code[0]) > 10 {
+					panic(newCon.Code)
+				}
 			}
 		}
 	})
 }
 
 func TestEOFGenerator(t *testing.T) {
-	data := []byte("\xa0\xfc")
+	data := []byte("01\xbe\x00\x01 \xfe")
 	jt := vm.NewPragueEOFInstructionSetForTesting()
 	fl := filler.NewFiller(data)
 	container := RandomContainer(fl)
@@ -30,6 +33,7 @@ func TestEOFGenerator(t *testing.T) {
 	newCon := new(vm.Container)
 	if err := newCon.UnmarshalBinary(container.MarshalBinary(), true); err == nil {
 		if err := newCon.ValidateCode(&jt, true); err == nil {
+			fmt.Println(container.Code)
 			panic(err)
 		}
 	}
