@@ -34,7 +34,6 @@ func TestEOFGenerator(t *testing.T) {
 	if err := newCon.UnmarshalBinary(container.MarshalBinary(), true); err == nil {
 		if err := newCon.ValidateCode(&jt, true); err == nil {
 			fmt.Println(container.Code)
-			panic(err)
 		}
 	}
 }
