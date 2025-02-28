@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"runtime"
 
 	"github.com/urfave/cli/v2"
 
@@ -138,8 +139,12 @@ func build(c *cli.Context) error {
 	cmd.Stderr = os.Stderr
 	// We have to disable CGO
 	cgo := "CGO_ENABLED=0"
-	goarch := "GOARCH=amd64" // on Apple Silicon, the build fails with GOARCH=arm64
-	env := append(os.Environ(), cgo, goarch)
+	env := append(os.Environ(), cgo)
+	// on Apple Silicon, the build fails with GOARCH=arm64
+	if runtime.GOARCH == "arm64" {
+		goarch := "GOARCH=amd64"
+		env = append(env, goarch)
+	}
 	cmd.Env = env
 	return cmd.Run()
 }
