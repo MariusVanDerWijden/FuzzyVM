@@ -22,7 +22,8 @@ import (
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator/precompiles"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/holiman/goevmlab/ops"
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/holiman/uint256"
 )
 
 var callStrategies = []Strategy{
@@ -39,9 +40,9 @@ func (*createCallRNGGenerator) Execute(env Environment) {
 	var (
 		code      = env.f.ByteSlice256()
 		isCreate2 = env.f.Bool()
-		callOp    = ops.OpCode(env.f.Byte())
+		callOp    = vm.OpCode(env.f.Byte())
 	)
-	env.p.CreateAndCall(code, isCreate2, callOp)
+	env.CreateAndCall(code, isCreate2, callOp)
 }
 
 func (*createCallRNGGenerator) Importance() int {
@@ -63,9 +64,9 @@ func (*createCallGenerator) Execute(env Environment) {
 		newFiller = filler.NewFiller(seed)
 		_, code   = GenerateProgram(newFiller)
 		isCreate2 = env.f.Bool()
-		callOp    = ops.OpCode(env.f.Byte())
+		callOp    = vm.OpCode(env.f.Byte())
 	)
-	env.p.CreateAndCall(code, isCreate2, callOp)
+	env.CreateAndCall(code, isCreate2, callOp)
 	// Decreasing recursion level generates to heavy test cases,
 	// so once we reach maxRecursionLevel we don't create new CreateAndCalls.
 
@@ -89,7 +90,7 @@ func (*randomCallGenerator) Execute(env Environment) {
 	}
 
 	c := precompiles.CallObj{
-		Gas:       env.f.GasInt(),
+		Gas:       uint256.MustFromBig(env.f.GasInt()),
 		Address:   addr,
 		Value:     env.f.BigInt16(),
 		InOffset:  uint32(env.f.MemInt().Uint64()),

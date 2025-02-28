@@ -17,7 +17,7 @@
 package generator
 
 import (
-	"github.com/holiman/goevmlab/ops"
+	"github.com/ethereum/go-ethereum/core/vm"
 )
 
 var basicStrategies = []Strategy{
@@ -40,11 +40,11 @@ type opcodeGenerator struct{}
 
 func (*opcodeGenerator) Execute(env Environment) {
 	// Just add a single opcode
-	op := ops.OpCode(env.f.Byte())
+	op := vm.OpCode(env.f.Byte())
 	// Nethermind currently uses a different blockhash provider in the statetests,
 	// so ignore the blockhash operator to reduce false positives.
 	// see: https://gist.github.com/MariusVanDerWijden/97fe9eb1aac074f7ccf6aef169aaadaa
-	if op != ops.BLOCKHASH {
+	if op != vm.BLOCKHASH {
 		env.p.Op(op)
 	}
 }
@@ -131,8 +131,8 @@ type returnGenerator struct{}
 func (*returnGenerator) Execute(env Environment) {
 	// Returns with offset, len
 	var (
-		offset = uint32(env.f.MemInt().Uint64())
-		len    = uint32(env.f.MemInt().Uint64())
+		offset = int(env.f.MemInt().Uint64())
+		len    = int(env.f.MemInt().Uint64())
 	)
 	env.p.Return(offset, len)
 }
@@ -155,15 +155,15 @@ func (*pushGenerator) Importance() int {
 type hashAndStoreGenerator struct{}
 
 func (*hashAndStoreGenerator) Execute(env Environment) {
-	env.p.Op(ops.RETURNDATASIZE)
+	env.p.Op(vm.RETURNDATASIZE)
 	env.p.Push(0)
-	env.p.Op(ops.MSIZE)
-	env.p.Op(ops.RETURNDATACOPY)
-	env.p.Op(ops.MSIZE)
+	env.p.Op(vm.MSIZE)
+	env.p.Op(vm.RETURNDATACOPY)
+	env.p.Op(vm.MSIZE)
 	env.p.Push(0)
-	env.p.Op(ops.KECCAK256)
-	env.p.Op(ops.DUP1)
-	env.p.Op(ops.SSTORE)
+	env.p.Op(vm.KECCAK256)
+	env.p.Op(vm.DUP1)
+	env.p.Op(vm.SSTORE)
 }
 
 func (*hashAndStoreGenerator) Importance() int {
@@ -175,7 +175,7 @@ type mloadGenerator struct{}
 func (*mloadGenerator) Execute(env Environment) {
 	offset := uint32(env.f.MemInt().Uint64())
 	env.p.Push(offset)
-	env.p.Op(ops.MLOAD)
+	env.p.Op(vm.MLOAD)
 }
 
 func (*mloadGenerator) Importance() int {
@@ -187,7 +187,7 @@ type sloadGenerator struct{}
 func (*sloadGenerator) Execute(env Environment) {
 	offset := uint32(env.f.MemInt().Uint64())
 	env.p.Push(offset)
-	env.p.Op(ops.SLOAD)
+	env.p.Op(vm.SLOAD)
 }
 
 func (*sloadGenerator) Importance() int {
@@ -199,7 +199,7 @@ type tloadGenerator struct{}
 func (*tloadGenerator) Execute(env Environment) {
 	offset := uint32(env.f.MemInt().Uint64())
 	env.p.Push(offset)
-	env.p.Op(ops.TLOAD)
+	env.p.Op(vm.TLOAD)
 }
 
 func (*tloadGenerator) Importance() int {
@@ -211,7 +211,7 @@ type blobhashGenerator struct{}
 func (*blobhashGenerator) Execute(env Environment) {
 	offset := uint32(env.f.MemInt().Uint64())
 	env.p.Push(offset)
-	env.p.Op(ops.BLOBHASH)
+	env.p.Op(vm.BLOBHASH)
 }
 
 func (*blobhashGenerator) Importance() int {

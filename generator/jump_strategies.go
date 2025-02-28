@@ -35,7 +35,7 @@ func (*jumpdestGenerator) Execute(env Environment) {
 		env.jumptable.Push(uint64(env.f.Uint16()), env.p.Label())
 	default:
 		// Set a jumpdest
-		env.jumptable.Push(env.p.Jumpdest(), env.p.Label())
+		env.jumptable.Push(env.p.Label(), env.p.Label())
 	}
 }
 

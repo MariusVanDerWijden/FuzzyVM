@@ -21,8 +21,9 @@ import (
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/vm/program"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/holiman/goevmlab/program"
+	"github.com/holiman/uint256"
 )
 
 var ecdsaAddr = common.HexToAddress("0x1")
@@ -40,7 +41,7 @@ func (*ecdsaCaller) call(p *program.Program, f *filler.Filler) error {
 	}
 	// Sig is in [R | S | V] we need it in components
 	c := CallObj{
-		Gas:       f.GasInt(),
+		Gas:       uint256.MustFromBig(f.GasInt()),
 		Address:   ecdsaAddr,
 		InOffset:  0,
 		InSize:    uint32(len(sig)),

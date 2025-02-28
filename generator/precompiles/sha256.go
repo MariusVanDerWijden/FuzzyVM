@@ -19,7 +19,8 @@ package precompiles
 import (
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/holiman/goevmlab/program"
+	"github.com/ethereum/go-ethereum/core/vm/program"
+	"github.com/holiman/uint256"
 )
 
 var sha256Addr = common.HexToAddress("0x2")
@@ -29,7 +30,7 @@ type sha256Caller struct{}
 func (*sha256Caller) call(p *program.Program, f *filler.Filler) error {
 	data := f.ByteSlice256()
 	c := CallObj{
-		Gas:       f.GasInt(),
+		Gas:       uint256.MustFromBig(f.GasInt()),
 		Address:   sha256Addr,
 		InOffset:  0,
 		InSize:    uint32(len(data)),

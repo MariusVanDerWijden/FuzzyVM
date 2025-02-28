@@ -18,7 +18,8 @@ package generator
 
 import (
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
-	"github.com/holiman/goevmlab/program"
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/core/vm/program"
 )
 
 type Environment struct {
@@ -82,4 +83,8 @@ func selectStrat(rnd byte, acc []accStrat) Strategy {
 		}
 	}
 	return acc[len(acc)-1].strat
+}
+
+func (env Environment) CreateAndCall(code []byte, isCreate2 bool, callOp vm.OpCode) {
+	panic("adsf")
 }

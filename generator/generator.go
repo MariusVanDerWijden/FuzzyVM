@@ -23,8 +23,8 @@ import (
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/vm/program"
 	"github.com/holiman/goevmlab/fuzzing"
-	"github.com/holiman/goevmlab/program"
 )
 
 var (
@@ -41,7 +41,7 @@ var (
 func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 	var (
 		env = Environment{
-			p:         program.NewProgram(),
+			p:         program.New(),
 			f:         f,
 			jumptable: NewJumptable(uint64(minJumpDistance)),
 		}
@@ -57,7 +57,7 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 		// Execute the strategy
 		strategy.Execute(env)
 	}
-	code := env.jumptable.InsertJumps(env.p.Bytecode())
+	code := env.jumptable.InsertJumps(env.p.Bytes())
 	return createGstMaker(f, code), code
 }
 

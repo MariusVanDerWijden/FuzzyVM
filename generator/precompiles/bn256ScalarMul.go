@@ -19,8 +19,9 @@ package precompiles
 import (
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/vm/program"
 	"github.com/ethereum/go-ethereum/crypto/bn256"
-	"github.com/holiman/goevmlab/program"
+	"github.com/holiman/uint256"
 )
 
 var bn256mulAddr = common.HexToAddress("0x7")
@@ -32,7 +33,7 @@ func (*bn256MulCaller) call(p *program.Program, f *filler.Filler) error {
 	point := new(bn256.G1).ScalarBaseMult(k)
 	scalar := f.BigInt32()
 	c := CallObj{
-		Gas:       f.GasInt(),
+		Gas:       uint256.MustFromBig(f.GasInt()),
 		Address:   bn256mulAddr,
 		InOffset:  0,
 		InSize:    96,

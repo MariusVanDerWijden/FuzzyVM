@@ -21,7 +21,8 @@ import (
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/holiman/goevmlab/program"
+	"github.com/ethereum/go-ethereum/core/vm/program"
+	"github.com/holiman/uint256"
 )
 
 var blake2fAddr = common.HexToAddress("0x9")
@@ -63,7 +64,7 @@ func (*blake2fCaller) call(p *program.Program, f *filler.Filler) error {
 	}
 
 	c := CallObj{
-		Gas:       f.GasInt(),
+		Gas:       uint256.MustFromBig(f.GasInt()),
 		Address:   blake2fAddr,
 		InOffset:  0,
 		InSize:    213,

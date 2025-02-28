@@ -21,7 +21,8 @@ import (
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/holiman/goevmlab/program"
+	"github.com/ethereum/go-ethereum/core/vm/program"
+	"github.com/holiman/uint256"
 )
 
 var (
@@ -44,7 +45,7 @@ type precompile interface {
 
 // CallObj encompasses everything needed to make a call.
 type CallObj struct {
-	Gas       *big.Int
+	Gas       *uint256.Int
 	Address   common.Address
 	Value     *big.Int
 	InOffset  uint32

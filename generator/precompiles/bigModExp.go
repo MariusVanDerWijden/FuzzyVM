@@ -21,7 +21,8 @@ import (
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/holiman/goevmlab/program"
+	"github.com/ethereum/go-ethereum/core/vm/program"
+	"github.com/holiman/uint256"
 )
 
 var bigModExpAddr = common.HexToAddress("0x5")
@@ -44,7 +45,7 @@ func (*bigModExpCaller) call(p *program.Program, f *filler.Filler) error {
 	data = append(data, mod...)
 	p.Mstore(data, 0)
 	c := CallObj{
-		Gas:       f.GasInt(),
+		Gas:       uint256.MustFromBig(f.GasInt()),
 		Address:   bigModExpAddr,
 		InOffset:  0,
 		InSize:    uint32(len(data)),

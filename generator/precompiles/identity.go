@@ -19,7 +19,8 @@ package precompiles
 import (
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/holiman/goevmlab/program"
+	"github.com/ethereum/go-ethereum/core/vm/program"
+	"github.com/holiman/uint256"
 )
 
 var identityAddr = common.HexToAddress("0x4")
@@ -29,7 +30,7 @@ type identityCaller struct{}
 func (*identityCaller) call(p *program.Program, f *filler.Filler) error {
 	data := f.ByteSlice256()
 	c := CallObj{
-		Gas:       f.GasInt(),
+		Gas:       uint256.MustFromBig(f.GasInt()),
 		Address:   identityAddr,
 		InOffset:  0,
 		InSize:    uint32(len(data)),

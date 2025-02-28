@@ -21,8 +21,9 @@ import (
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/vm/program"
 	"github.com/ethereum/go-ethereum/crypto/bn256"
-	"github.com/holiman/goevmlab/program"
+	"github.com/holiman/uint256"
 )
 
 var bn256pairingAddr = common.HexToAddress("0x8")
@@ -42,7 +43,7 @@ func (*bn256PairingCaller) call(p *program.Program, f *filler.Filler) error {
 	}
 
 	c := CallObj{
-		Gas:       f.GasInt(),
+		Gas:       uint256.MustFromBig(f.GasInt()),
 		Address:   bn256pairingAddr,
 		InOffset:  0,
 		InSize:    inSize,
