@@ -7,6 +7,7 @@ toolchain go1.24.0
 require (
 	github.com/ethereum/go-ethereum v1.15.3
 	github.com/holiman/goevmlab v0.0.0-20250220074143-a61923563fc5
+	github.com/holiman/uint256 v1.3.2
 	github.com/korovkin/limiter v0.0.0-20230307205149-3d4b2b34c99d
 	github.com/urfave/cli/v2 v2.27.5
 	golang.org/x/crypto v0.32.0
@@ -34,7 +35,6 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
-	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect

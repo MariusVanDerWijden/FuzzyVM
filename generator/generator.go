@@ -34,7 +34,14 @@ var (
 	recursionLevel    = 0
 	maxRecursionLevel = 10
 	minJumpDistance   = 10
+	allStrategies     []Strategy
 )
+
+func init() {
+	allStrategies = append(allStrategies, basicStrategies...)
+	allStrategies = append(allStrategies, callStrategies...)
+	allStrategies = append(allStrategies, jumpStrategies...)
+}
 
 // GenerateProgram creates a new evm program and returns
 // a gstMaker based on it as well as its program code.
@@ -45,12 +52,12 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			f:         f,
 			jumptable: NewJumptable(uint64(minJumpDistance)),
 		}
-		strategies = newAccStrats(basicStrategies)
+		strategies = newAccStrats(allStrategies)
 	)
 
 	// Run for counter rounds
 	counter := f.Byte()
-	for i := 0; i < int(counter); i++ {
+	for range int(counter) {
 		// Select one of the strategies
 		rnd := f.Byte()
 		strategy := selectStrat(rnd, strategies)
