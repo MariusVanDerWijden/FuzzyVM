@@ -75,7 +75,7 @@ func pairing(rounds int, f *filler.Filler) ([]*bn256.G1, []*bn256.G2) {
 		target      = new(big.Int)
 	)
 	// LHS: sum(x: 1->n: e(aMulx * G1, bMulx * G2))
-	for i := 0; i < int(rounds); i++ {
+	for range rounds {
 		// aMul * G1
 		aMul := f.BigInt32()
 		pointG1 := new(bn256.G1).ScalarBaseMult(aMul)

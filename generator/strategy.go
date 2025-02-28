@@ -86,5 +86,34 @@ func selectStrat(rnd byte, acc []accStrat) Strategy {
 }
 
 func (env Environment) CreateAndCall(code []byte, isCreate2 bool, callOp vm.OpCode) {
-	panic("adsf")
+	if isCreate2 {
+		env.p.Create2ThenCall(code, []byte{123})
+	} else {
+		var (
+			value  = 0
+			offset = 0
+			size   = len(code)
+		)
+		// Load the code into mem
+		env.p.Mstore(code, 0)
+		// Create it
+		env.p.Push(size)
+		env.p.Push(offset)
+		env.p.Push(value)
+		env.p.Op(vm.CREATE)
+		// If there happen to be a zero on the stack, it doesn't matter, we're
+		// not sending any value anyway
+		env.p.Push(0).Push(0) // mem out
+		env.p.Push(0).Push(0) // mem in
+		if callOp == vm.CALL || callOp == vm.CALLCODE {
+			env.p.Push(0)     // value
+			env.p.Op(vm.DUP6) // address
+		} else {
+			env.p.Op(vm.DUP5) // address
+		}
+		env.p.Op(vm.GAS)
+		env.p.Op(callOp) // opcode
+		env.p.Op(vm.POP) // pop the retval
+		env.p.Op(vm.POP) // pop the address
+	}
 }

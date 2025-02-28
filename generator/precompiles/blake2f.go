@@ -38,17 +38,17 @@ func (*blake2fCaller) call(p *program.Program, f *filler.Filler) error {
 	binary.BigEndian.PutUint32(input, f.Uint32())
 	offset += 4
 	// h
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		binary.BigEndian.PutUint64(input[offset:], f.Uint64())
 		offset += 8
 	}
 	// m
-	for i := 0; i < 16; i++ {
+	for range 16 {
 		binary.BigEndian.PutUint64(input[offset:], f.Uint64())
 		offset += 8
 	}
 	// t
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		binary.BigEndian.PutUint64(input[offset:], f.Uint64())
 		offset += 8
 	}
