@@ -22,6 +22,17 @@ go build
 ./FuzzyVM run
 ```
 
+### Docker 
+```shell
+# Build the docker image
+docker build . -t FuzzyVM -f Dockerfile
+# Run the container and mount local directories
+docker run -it -v ./out:/go/out -v ./corpus:/go/corpus FuzzyVM
+# Start the fuzzer in the container
+> ./FuzzyVM run
+
+``` 
+
 # Corpus
 It makes sense to create an initial corpus in order to improve the efficiency of the fuzzer.
 You can generate corpus elements with `./FuzzyVM corpus --count N`, which will generate `N` corpus elements.

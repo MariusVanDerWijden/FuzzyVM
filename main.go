@@ -83,7 +83,7 @@ var app = initApp()
 
 const (
 	outputRootDir = "out"
-	crashesDir    = "crashes"
+	corpusDir     = "corpus"
 )
 
 func main() {
@@ -122,7 +122,7 @@ func corpus(c *cli.Context) error {
 func run(c *cli.Context) error {
 	directories := []string{
 		outputRootDir,
-		crashesDir,
+		corpusDir,
 	}
 	for i := 0; i < 256; i++ {
 		directories = append(directories, fmt.Sprintf("%v/%v", outputRootDir, common.Bytes2Hex([]byte{byte(i)})))
