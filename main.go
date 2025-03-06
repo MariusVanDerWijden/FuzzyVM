@@ -18,8 +18,10 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha1"
+	"crypto/sha3"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -30,6 +32,7 @@ import (
 
 	"github.com/MariusVanDerWijden/FuzzyVM/benchmark"
 	"github.com/MariusVanDerWijden/FuzzyVM/fuzzer"
+	"github.com/MariusVanDerWijden/FuzzyVM/generator"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -66,6 +69,17 @@ var runCommand = &cli.Command{
 	},
 }
 
+var fillCommand = &cli.Command{
+	Name:   "fill",
+	Usage:  "Creates tests out of bytecode files",
+	Action: fill,
+	Flags: []cli.Flag{
+		inputFlag,
+		outputFlag,
+		forkFlag,
+	},
+}
+
 func initApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = "FuzzyVM"
@@ -75,6 +89,7 @@ func initApp() *cli.App {
 		corpusCommand,
 		minCorpusCommand,
 		runCommand,
+		fillCommand,
 	}
 	return app
 }
@@ -83,7 +98,7 @@ var app = initApp()
 
 const (
 	outputRootDir = "out"
-	crashesDir    = "crashes"
+	corpusDir     = "corpus"
 )
 
 func main() {
@@ -122,7 +137,7 @@ func corpus(c *cli.Context) error {
 func run(c *cli.Context) error {
 	directories := []string{
 		outputRootDir,
-		crashesDir,
+		corpusDir,
 	}
 	for i := 0; i < 256; i++ {
 		directories = append(directories, fmt.Sprintf("%v/%v", outputRootDir, common.Bytes2Hex([]byte{byte(i)})))
@@ -206,4 +221,36 @@ func ensureDirs(dirs ...string) {
 			}
 		}
 	}
+}
+
+func fill(c *cli.Context) error {
+	var (
+		in   = c.String(inputFlag.Name)
+		out  = c.String(outputFlag.Name)
+		fork = c.String(forkFlag.Name)
+	)
+
+	tests, err := os.ReadFile(in)
+	if err != nil {
+		return err
+	}
+	scanner := bufio.NewScanner(bytes.NewBuffer(tests))
+	for {
+		if !scanner.Scan() {
+			break
+		}
+		var (
+			code      = scanner.Bytes()
+			codeHash  = sha3.New256().Sum(code)
+			value     = "0x1234"
+			input     = "0x12343210"
+			finalName = fmt.Sprintf("FuzzyVM-%v", common.Bytes2Hex(codeHash))
+			path      = fmt.Sprintf("%v/%v", out, finalName)
+		)
+		maker := generator.CreateGstMaker(value, input, code)
+		maker.EnableFork(fork)
+		test := maker.ToGeneralStateTest(finalName)
+		fuzzer.StoreTest(test, path)
+	}
+	return nil
 }

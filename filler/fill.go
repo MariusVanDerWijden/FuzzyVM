@@ -67,7 +67,7 @@ func (f *Filler) Byte() byte {
 func (f *Filler) Read(b []byte) (n int, err error) {
 	// TODO (MariusVanDerWijden) this can be done more efficiently
 	tmp := f.ByteSlice(len(b))
-	for i := 0; i < len(b); i++ {
+	for i := range b {
 		b[i] = tmp[i]
 	}
 	return len(b), nil
