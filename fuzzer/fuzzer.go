@@ -84,7 +84,8 @@ func Fuzz(data []byte) int {
 	}
 	// Save the test
 	test := testMaker.ToGeneralStateTest(finalName)
-	if storeTest(test, hashed, finalName) {
+	path := fmt.Sprintf("%v/%02x/%v.json", outputDir, hashed[0], finalName)
+	if StoreTest(test, path) {
 		return 0
 	}
 	if f.UsedUp() {
@@ -166,8 +167,7 @@ func minimizeProgram(test *fuzzing.GstMaker, name string) (*fuzzing.GstMaker, er
 
 // storeTest saves a testcase to disk
 // returns true if a duplicate test was found
-func storeTest(test *fuzzing.GeneralStateTest, hashed []byte, testName string) bool {
-	path := fmt.Sprintf("%v/%02x/%v.json", outputDir, hashed[0], testName)
+func StoreTest(test *fuzzing.GeneralStateTest, path string) bool {
 	// check if the test is already on disk
 	if _, err := os.Stat(path); err == nil {
 		fmt.Println("Duplicate test found")
@@ -177,13 +177,13 @@ func storeTest(test *fuzzing.GeneralStateTest, hashed []byte, testName string) b
 	}
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
 	if err != nil {
-		panic(fmt.Sprintf("Could not open test file %q: %v", testName, err))
+		panic(fmt.Sprintf("Could not open test file %q: %v", path, err))
 	}
 	defer f.Close()
 	// Write to file
 	encoder := json.NewEncoder(f)
 	if err = encoder.Encode(test); err != nil {
-		panic(fmt.Sprintf("Could not encode state test %q: %v", testName, err))
+		panic(fmt.Sprintf("Could not encode state test %q: %v", path, err))
 	}
 	return false
 }

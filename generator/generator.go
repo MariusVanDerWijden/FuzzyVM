@@ -69,6 +69,14 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 }
 
 func createGstMaker(fill *filler.Filler, code []byte) *fuzzing.GstMaker {
+	var (
+		value = randHex(fill, 4)
+		data  = randHex(fill, 100)
+	)
+	return CreateGstMaker(value, data, code)
+}
+
+func CreateGstMaker(value, data string, code []byte) *fuzzing.GstMaker {
 	gst := fuzzing.NewGstMaker()
 	gst.EnableFork(fork)
 	// Add sender
@@ -91,8 +99,8 @@ func createGstMaker(fill *filler.Filler, code []byte) *fuzzing.GstMaker {
 	tx := &fuzzing.StTransaction{
 		GasLimit:   []uint64{20000000},
 		Nonce:      0,
-		Value:      []string{randHex(fill, 4)},
-		Data:       []string{randHex(fill, 100)},
+		Value:      []string{value},
+		Data:       []string{data},
 		GasPrice:   big.NewInt(0x80),
 		To:         dest.Hex(),
 		PrivateKey: sk,

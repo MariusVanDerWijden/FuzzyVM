@@ -97,7 +97,8 @@ func TestMinimizeProgram(t *testing.T) {
 	// Save the test
 	test := testMaker.ToGeneralStateTest(name)
 	hashed := hash(testMaker.ToGeneralStateTest("hashName"))
-	storeTest(test, hashed, name)
+	path := fmt.Sprintf("%v/%02x/%v.json", outputDir, hashed[0], name)
+	StoreTest(test, path)
 	// minimize
 	minimized, err := minimizeProgram(testMaker, name)
 	if err != nil {
@@ -107,5 +108,6 @@ func TestMinimizeProgram(t *testing.T) {
 	_ = minTest
 	fmt.Printf("%v", minTest)
 	minHashed := hash(testMaker.ToGeneralStateTest("hashName"))
-	storeTest(minTest, minHashed, name+"_min")
+	path = fmt.Sprintf("%v/%02x/%v-min.json", outputDir, minHashed[0], name)
+	StoreTest(test, path)
 }

@@ -25,13 +25,21 @@ go build
 ### Docker 
 ```shell
 # Build the docker image
-docker build . -t FuzzyVM -f Dockerfile
+docker build . -t fuzzyvm -f Dockerfile
 # Run the container and mount local directories
-docker run -it -v ./out:/go/out -v ./corpus:/go/corpus FuzzyVM
+docker run -it -v ./out:/go/out -v ./corpus:/go/corpus fuzzyvm
 # Start the fuzzer in the container
 > ./FuzzyVM run
 
 ``` 
+
+### Execute 
+```shell
+# we use goevmlab to execute the tests
+docker run -it -v ./out:/fuzztmp --entrypoint bash holiman/omnifuzz
+# now execute
+runtest --gethbatch=/gethvm --nethbatch=/neth/nethtest --revme=/revme --besubatch=/evmtool/bin/evmtool /fuzztmp/\*/\*
+```
 
 # Corpus
 It makes sense to create an initial corpus in order to improve the efficiency of the fuzzer.

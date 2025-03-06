@@ -33,4 +33,19 @@ var (
 		Usage: "Number of generator threads started (default = NUMCPU)",
 		Value: runtime.NumCPU(),
 	}
+
+	inputFlag = &cli.StringFlag{
+		Name:  "in",
+		Usage: "Input directory",
+	}
+
+	outputFlag = &cli.StringFlag{
+		Name:  "out",
+		Usage: "Output directory",
+	}
+
+	forkFlag = &cli.StringFlag{
+		Name:  "out",
+		Usage: "Specifies the fork",
+	}
 )
