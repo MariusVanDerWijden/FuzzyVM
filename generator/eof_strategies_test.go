@@ -16,7 +16,7 @@ func FuzzEOFGenerator(f *testing.F) {
 		newCon := new(vm.Container)
 		if err := newCon.UnmarshalBinary(container.MarshalBinary(), true); err == nil {
 			if err := newCon.ValidateCode(&jt, true); err == nil {
-				if len(newCon.Code) > 0 && len(newCon.Code[0]) > 10 {
+				if len(newCon.Code) > 0 && len(newCon.Code[0]) > 1 {
 					panic(newCon.Code)
 				}
 			}
