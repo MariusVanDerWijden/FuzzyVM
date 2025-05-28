@@ -70,10 +70,17 @@ func readCorpus() []string {
 	return res
 }
 
-func FuzzVM(f *testing.F) {
+func FuzzVMBasic(f *testing.F) {
 	corpus := readCorpus()
 	for _, elem := range corpus {
 		f.Add([]byte(elem))
+	}
+	for i := range 255 {
+		b := make([]byte, 32)
+		for k := range 32 {
+			b[k] = byte(i)
+		}
+		f.Add(b)
 	}
 	f.Fuzz(func(t *testing.T, a []byte) {
 		Fuzz(a)
@@ -82,7 +89,11 @@ func FuzzVM(f *testing.F) {
 
 func FuzzVMStateless(f *testing.F) {
 	for i := range 255 {
-		f.Add([]byte{byte(i)})
+		b := make([]byte, 32)
+		for k := range 32 {
+			b[k] = byte(i)
+		}
+		f.Add(b)
 	}
 	f.Fuzz(func(t *testing.T, a []byte) {
 		FuzzStateless(a)
@@ -90,8 +101,8 @@ func FuzzVMStateless(f *testing.F) {
 }
 
 func TestFuzzer(t *testing.T) {
-	data := []byte("\x89\x1cɖ\xfdʪ\x1f")
-	FuzzStateless([]byte(data))
+	data := []byte("\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a\x5a")
+	Fuzz([]byte(data))
 }
 
 func TestMinimizeProgram(t *testing.T) {

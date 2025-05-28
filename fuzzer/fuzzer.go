@@ -62,14 +62,7 @@ func FuzzStateless(data []byte) int {
 		return -1
 	}
 	f := filler.NewFiller(data)
-	testMaker, _ := generator.GenerateProgram(f)
-	_ = testMaker
-	//original := new(bytes.Buffer)
-	/*
-		if err := testMaker.Fill(original); err != nil {
-			return -1
-		}
-	*/
+	generator.GenerateProgram(f)
 	return 0
 }
 
