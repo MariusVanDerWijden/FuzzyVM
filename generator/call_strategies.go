@@ -49,6 +49,10 @@ func (*createCallRNGGenerator) Importance() int {
 	return 4
 }
 
+func (*createCallRNGGenerator) String() string {
+	return "createCallRNGGenerator"
+}
+
 type createCallGenerator struct{}
 
 func (*createCallGenerator) Execute(env Environment) {
@@ -75,6 +79,10 @@ func (*createCallGenerator) Execute(env Environment) {
 
 func (*createCallGenerator) Importance() int {
 	return 5
+}
+
+func (*createCallGenerator) String() string {
+	return "createCallGenerator"
 }
 
 type randomCallGenerator struct{}
@@ -105,6 +113,10 @@ func (*randomCallGenerator) Importance() int {
 	return 4
 }
 
+func (*randomCallGenerator) String() string {
+	return "randomCallGenerator"
+}
+
 type callPrecompileGenerator struct{}
 
 func (*callPrecompileGenerator) Execute(env Environment) {
@@ -113,4 +125,8 @@ func (*callPrecompileGenerator) Execute(env Environment) {
 
 func (*callPrecompileGenerator) Importance() int {
 	return 8
+}
+
+func (*callPrecompileGenerator) String() string {
+	return "callPrecompileGenerator"
 }

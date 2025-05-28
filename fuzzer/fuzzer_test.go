@@ -80,9 +80,18 @@ func FuzzVM(f *testing.F) {
 	})
 }
 
+func FuzzVMStateless(f *testing.F) {
+	for i := range 255 {
+		f.Add([]byte{byte(i)})
+	}
+	f.Fuzz(func(t *testing.T, a []byte) {
+		FuzzStateless(a)
+	})
+}
+
 func TestFuzzer(t *testing.T) {
-	data := "asdfasdfasdfasdfasdfasdfasdffasdfasdfasdfasdfasd"
-	Fuzz([]byte(data))
+	data := []byte("\x89\x1cɖ\xfdʪ\x1f")
+	FuzzStateless([]byte(data))
 }
 
 func TestMinimizeProgram(t *testing.T) {

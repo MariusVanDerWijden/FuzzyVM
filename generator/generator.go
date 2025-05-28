@@ -18,6 +18,7 @@
 package generator
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
@@ -36,6 +37,16 @@ var (
 	minJumpDistance   = 10
 )
 
+var strategies = map[byte]Strategy{}
+
+func init() {
+	strats := []Strategy{}
+	strats = append(strats, basicStrategies...)
+	strats = append(strats, callStrategies...)
+	strats = append(strats, jumpStrategies...)
+	strategies = makeMap(strats)
+}
+
 // GenerateProgram creates a new evm program and returns
 // a gstMaker based on it as well as its program code.
 func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
@@ -45,17 +56,26 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			f:         f,
 			jumptable: NewJumptable(uint64(minJumpDistance)),
 		}
-		strategies = newAccStrats(basicStrategies)
+		debug = false
 	)
 
 	// Run for counter rounds
 	counter := f.Byte()
-	for i := 0; i < int(counter); i++ {
+	for range counter {
 		// Select one of the strategies
 		rnd := f.Byte()
-		strategy := selectStrat(rnd, strategies)
+		strategy := strategies[rnd]
+		if strategy == nil {
+			panic(fmt.Sprintf("strategy %v is nil", rnd))
+		}
+		if debug {
+			fmt.Println(rnd, strategy.String())
+		}
 		// Execute the strategy
 		strategy.Execute(env)
+		if len(env.p.Bytes()) > 10000 {
+			break
+		}
 	}
 	code := env.jumptable.InsertJumps(env.p.Bytes())
 	return createGstMaker(f, code), code
@@ -82,7 +102,7 @@ func createGstMaker(fill *filler.Filler, code []byte) *fuzzing.GstMaker {
 	})
 	// Add the transaction
 	tx := &fuzzing.StTransaction{
-		GasLimit:   []uint64{20000000},
+		GasLimit:   []uint64{20_000_000},
 		Nonce:      0,
 		Value:      []string{randHex(fill, 4)},
 		Data:       []string{randHex(fill, 100)},

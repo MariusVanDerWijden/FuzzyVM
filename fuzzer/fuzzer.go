@@ -57,6 +57,22 @@ func SetFuzzyVMDir() {
 	}
 }
 
+func FuzzStateless(data []byte) int {
+	if len(data) < 32 {
+		return -1
+	}
+	f := filler.NewFiller(data)
+	testMaker, _ := generator.GenerateProgram(f)
+	_ = testMaker
+	//original := new(bytes.Buffer)
+	/*
+		if err := testMaker.Fill(original); err != nil {
+			return -1
+		}
+	*/
+	return 0
+}
+
 // Fuzz is the entry point for go-fuzz
 func Fuzz(data []byte) int {
 	// Too little data destroys our performance and makes it hard for the generator

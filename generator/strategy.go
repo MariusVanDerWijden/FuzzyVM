@@ -17,6 +17,8 @@
 package generator
 
 import (
+	"math"
+
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/core/vm/program"
@@ -36,55 +38,57 @@ type Strategy interface {
 	// This is needed to calculate the probability of this strategy.
 	// Should be on a scale of 1-100.
 	Importance() int
+
+	String() string
 }
 
 // Probability returns the probability of this strategy,
 // given the sum of all strategies on scale 1-255.
-func Probability(strat Strategy, sum int) byte {
+func Probability(strat Strategy) byte {
 	imp := strat.Importance()
-	pr := byte(float32(sum) / float32(imp) * 255)
-	if pr == 0 {
-		return 1
-	}
-	return pr
+	return max(byte(math.Round((float64(imp)/float64(100))*float64(255))), 1)
 }
 
-// accStrat is an accumulated strategy.
-// It has a range between 0-255 in which this strategy is executed.
-type accStrat struct {
-	rnge  byte
-	strat Strategy
-}
-
-func newAccStrats(strats []Strategy) []accStrat {
-	sum := 0
-	for _, s := range strats {
-		sum += s.Importance()
-	}
-	rnge := byte(0)
-	res := make([]accStrat, len(strats))
-	for i, s := range strats {
-		res[i] = accStrat{
-			rnge:  rnge,
-			strat: s,
-		}
-		rnge += Probability(s, sum)
-	}
-	return res
-}
-
-// selectStrat selects the strategy that has the range
-// specified by the rnd byte.
-// expects acc to be ordered.
-func selectStrat(rnd byte, acc []accStrat) Strategy {
-	for i := 0; i < len(acc)-1; i++ {
-		if rnd > acc[i].rnge && rnd < acc[i+1].rnge {
-			return acc[i].strat
+func makeMap(strats []Strategy) map[byte]Strategy {
+	m := make(map[byte]Strategy)
+	sum := byte(0)
+	for _, strat := range strats {
+		for i := byte(0); i < Probability(strat); i++ {
+			m[sum] = strat
+			sum++
 		}
 	}
-	return acc[len(acc)-1].strat
+	for i := sum - 1; i < 255; i++ {
+		m[i+1] = new(validOpcodeGenerator)
+	}
+	return m
 }
 
 func (env Environment) CreateAndCall(code []byte, isCreate2 bool, callOp vm.OpCode) {
-	panic("adsf")
+	var (
+		value    = 0
+		offset   = 0
+		size     = len(code)
+		salt     = 0
+		createOp = vm.CREATE
+	)
+	// Load the code into mem
+	env.p.Mstore(code, 0)
+	// Create it
+	if isCreate2 {
+		env.p.Push(salt)
+		createOp = vm.CREATE2
+	}
+	env.p.Push(size).Push(offset).Push(value).Op(createOp)
+	// If there happen to be a zero on the stack, it doesn't matter, we're
+	// not sending any value anyway
+	env.p.Push(0).Push(0) // mem out
+	env.p.Push(0).Push(0) // mem in
+	addrOffset := vm.OpCode(vm.DUP5)
+	if callOp == vm.CALL || callOp == vm.CALLCODE {
+		env.p.Push(0) // value
+		addrOffset = vm.DUP6
+	}
+	env.p.Op(addrOffset) // address (from create-op above)
+	env.p.Op(vm.GAS, callOp)
 }

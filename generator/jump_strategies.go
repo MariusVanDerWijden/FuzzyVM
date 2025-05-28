@@ -43,6 +43,10 @@ func (*jumpdestGenerator) Importance() int {
 	return 5
 }
 
+func (*jumpdestGenerator) String() string {
+	return "jumpdestGenerator"
+}
+
 type jumpGenerator struct{}
 
 func (*jumpGenerator) Execute(env Environment) {
@@ -67,4 +71,8 @@ func (*jumpGenerator) Execute(env Environment) {
 
 func (*jumpGenerator) Importance() int {
 	return 7
+}
+
+func (*jumpGenerator) String() string {
+	return "jumpGenerator"
 }

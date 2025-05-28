@@ -17,6 +17,8 @@
 package generator
 
 import (
+	"strings"
+
 	"github.com/ethereum/go-ethereum/core/vm"
 )
 
@@ -53,13 +55,37 @@ func (*opcodeGenerator) Importance() int {
 	return 10
 }
 
+func (*opcodeGenerator) String() string {
+	return "opcodeGenerator"
+}
+
+type validOpcodeGenerator struct{}
+
+func (*validOpcodeGenerator) Execute(env Environment) {
+	op := vm.OpCode(env.f.Byte())
+	if strings.Contains(op.String(), "not defined") {
+		// If the opcode is not defined, use JUMPDEST
+		// since JUMPDEST is a valid opcode
+		op = vm.JUMPDEST
+	}
+	env.p.Op(op)
+}
+
+func (*validOpcodeGenerator) Importance() int {
+	return 10
+}
+
+func (*validOpcodeGenerator) String() string {
+	return "validOpcodeGenerator"
+}
+
 type memStorageGenerator struct{}
 
 func (*memStorageGenerator) Execute(env Environment) {
 	// Copy a part of memory into storage
 	var (
 		memStart  = int(env.f.MemInt().Uint64())
-		memSize   = int(env.f.MemInt().Uint64())
+		memSize   = int(env.f.Byte())
 		startSlot = int(env.f.MemInt().Uint64())
 	)
 	// TODO MSTORE currently uses too much gas
@@ -68,6 +94,10 @@ func (*memStorageGenerator) Execute(env Environment) {
 
 func (*memStorageGenerator) Importance() int {
 	return 1
+}
+
+func (*memStorageGenerator) String() string {
+	return "memStorageGenerator"
 }
 
 type mstoreGenerator struct{}
@@ -85,6 +115,10 @@ func (*mstoreGenerator) Importance() int {
 	return 3
 }
 
+func (*mstoreGenerator) String() string {
+	return "mstoreGenerator"
+}
+
 type sstoreGenerator struct{}
 
 func (*sstoreGenerator) Execute(env Environment) {
@@ -98,6 +132,10 @@ func (*sstoreGenerator) Execute(env Environment) {
 
 func (*sstoreGenerator) Importance() int {
 	return 3
+}
+
+func (*sstoreGenerator) String() string {
+	return "sstoreGenerator"
 }
 
 type tstoreGenerator struct{}
@@ -115,6 +153,10 @@ func (*tstoreGenerator) Importance() int {
 	return 3
 }
 
+func (*tstoreGenerator) String() string {
+	return "tstoreGenerator"
+}
+
 type returnDataGenerator struct{}
 
 func (*returnDataGenerator) Execute(env Environment) {
@@ -124,6 +166,10 @@ func (*returnDataGenerator) Execute(env Environment) {
 
 func (*returnDataGenerator) Importance() int {
 	return 1
+}
+
+func (*returnDataGenerator) String() string {
+	return "returnDataGenerator"
 }
 
 type returnGenerator struct{}
@@ -141,6 +187,10 @@ func (*returnGenerator) Importance() int {
 	return 1
 }
 
+func (*returnGenerator) String() string {
+	return "returnGenerator"
+}
+
 type pushGenerator struct{}
 
 func (*pushGenerator) Execute(env Environment) {
@@ -150,6 +200,10 @@ func (*pushGenerator) Execute(env Environment) {
 
 func (*pushGenerator) Importance() int {
 	return 4
+}
+
+func (*pushGenerator) String() string {
+	return "pushGenerator"
 }
 
 type hashAndStoreGenerator struct{}
@@ -170,6 +224,10 @@ func (*hashAndStoreGenerator) Importance() int {
 	return 2
 }
 
+func (*hashAndStoreGenerator) String() string {
+	return "hashAndStoreGenerator"
+}
+
 type mloadGenerator struct{}
 
 func (*mloadGenerator) Execute(env Environment) {
@@ -180,6 +238,10 @@ func (*mloadGenerator) Execute(env Environment) {
 
 func (*mloadGenerator) Importance() int {
 	return 1
+}
+
+func (*mloadGenerator) String() string {
+	return "mloadGenerator"
 }
 
 type sloadGenerator struct{}
@@ -194,6 +256,10 @@ func (*sloadGenerator) Importance() int {
 	return 1
 }
 
+func (*sloadGenerator) String() string {
+	return "sloadGenerator"
+}
+
 type tloadGenerator struct{}
 
 func (*tloadGenerator) Execute(env Environment) {
@@ -206,6 +272,10 @@ func (*tloadGenerator) Importance() int {
 	return 1
 }
 
+func (*tloadGenerator) String() string {
+	return "tloadGenerator"
+}
+
 type blobhashGenerator struct{}
 
 func (*blobhashGenerator) Execute(env Environment) {
@@ -216,4 +286,8 @@ func (*blobhashGenerator) Execute(env Environment) {
 
 func (*blobhashGenerator) Importance() int {
 	return 1
+}
+
+func (*blobhashGenerator) String() string {
+	return "blobhashGenerator"
 }
