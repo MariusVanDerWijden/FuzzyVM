@@ -110,22 +110,21 @@ func TestMinimizeProgram(t *testing.T) {
 	data := "asdfadfasdfasdfasdfasdfasdfadsfldlafdsgoinsfandofaijdsf"
 	f := filler.NewFiller([]byte(data))
 	testMaker, _ := generator.GenerateProgram(f)
-	name := randTestName([]byte(data))
 	if err := testMaker.Fill(nil); err != nil {
 		panic(err)
 	}
 	// Save the test
-	test := testMaker.ToGeneralStateTest(name)
+	test := testMaker.ToGeneralStateTest("name")
 	hashed := hash(testMaker.ToGeneralStateTest("hashName"))
-	storeTest(test, hashed, name)
+	storeTest(test, hashed, "name")
 	// minimize
-	minimized, err := minimizeProgram(testMaker, name)
+	minimized, err := minimizeProgram(testMaker)
 	if err != nil {
 		t.Error(err)
 	}
-	minTest := minimized.ToGeneralStateTest(name)
+	minTest := minimized.ToGeneralStateTest("name")
 	_ = minTest
 	fmt.Printf("%v", minTest)
 	minHashed := hash(testMaker.ToGeneralStateTest("hashName"))
-	storeTest(minTest, minHashed, name+"_min")
+	storeTest(minTest, minHashed, "name_min")
 }
