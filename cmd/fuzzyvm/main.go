@@ -136,7 +136,7 @@ func run(c *cli.Context) error {
 func startGenerator(genThreads int) *exec.Cmd {
 	var (
 		cmdName = "go"
-		target  = "FuzzVM"
+		target  = "FuzzVMBasic"
 		dir     = "./fuzzer/..."
 	)
 	cmd := exec.Command(cmdName, "test", "--fuzz", target, "--parallel", fmt.Sprint(genThreads), dir)

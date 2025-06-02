@@ -56,7 +56,7 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 			f:         f,
 			jumptable: NewJumptable(uint64(minJumpDistance)),
 		}
-		debug = true
+		debug = false
 	)
 
 	// Run for counter rounds

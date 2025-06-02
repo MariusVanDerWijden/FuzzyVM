@@ -118,7 +118,7 @@ func TestMinimizeProgram(t *testing.T) {
 	hashed := hash(testMaker.ToGeneralStateTest("hashName"))
 	storeTest(test, hashed, "name")
 	// minimize
-	minimized, err := minimizeProgram(testMaker)
+	minimized, _, err := MinimizeProgram(testMaker)
 	if err != nil {
 		t.Error(err)
 	}

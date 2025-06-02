@@ -75,7 +75,7 @@ func Fuzz(data []byte) int {
 	f := filler.NewFiller(data)
 	testMaker, _ := generator.GenerateProgram(f)
 	// minimize test
-	minimized, err := minimizeProgram(testMaker)
+	minimized, _, err := MinimizeProgram(testMaker)
 	if err == nil {
 		testMaker = minimized
 	}
@@ -110,10 +110,10 @@ func setupTrace(name string) *os.File {
 	return traceFile
 }
 
-func minimizeProgram(test *fuzzing.GstMaker) (*fuzzing.GstMaker, error) {
+func MinimizeProgram(test *fuzzing.GstMaker) (*fuzzing.GstMaker, []byte, error) {
 	original := new(bytes.Buffer)
 	if err := test.Fill(original); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	name := ""
 	gstPtr := test.ToGeneralStateTest(name)
@@ -170,7 +170,7 @@ func minimizeProgram(test *fuzzing.GstMaker) (*fuzzing.GstMaker, error) {
 		foundLength += 100
 	}
 	test.SetCode(addr, code[0:foundLength])
-	return test, nil
+	return test, code[0:foundLength], nil
 }
 
 // storeTest saves a testcase to disk
