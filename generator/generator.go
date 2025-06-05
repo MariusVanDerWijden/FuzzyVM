@@ -81,10 +81,10 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 	if debug {
 		fmt.Printf("length: %v \n%x\n", len(code), code)
 	}
-	return createGstMaker(f, code), code
+	return CreateGstMaker(f, code), code
 }
 
-func createGstMaker(fill *filler.Filler, code []byte) *fuzzing.GstMaker {
+func CreateGstMaker(fill *filler.Filler, code []byte) *fuzzing.GstMaker {
 	gst := fuzzing.NewGstMaker()
 	gst.EnableFork(fork)
 	// Add sender
