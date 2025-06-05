@@ -25,6 +25,9 @@ import (
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/core/vm/program"
+	"github.com/holiman/uint256"
 )
 
 func init() {
@@ -116,7 +119,7 @@ func TestMinimizeProgram(t *testing.T) {
 	// Save the test
 	test := testMaker.ToGeneralStateTest("name")
 	hashed := hash(testMaker.ToGeneralStateTest("hashName"))
-	storeTest(test, hashed, "name")
+	storeTest(test, makeDefaultPath(hashed, "name"))
 	// minimize
 	minimized, _, err := MinimizeProgram(testMaker)
 	if err != nil {
@@ -126,5 +129,35 @@ func TestMinimizeProgram(t *testing.T) {
 	_ = minTest
 	fmt.Printf("%v", minTest)
 	minHashed := hash(testMaker.ToGeneralStateTest("hashName"))
-	storeTest(minTest, minHashed, "name_min")
+	storeTest(minTest, makeDefaultPath(minHashed, "name.min"))
+}
+
+func TestCreateStateTest(t *testing.T) {
+	p := program.New()
+	p.MstoreSmall([]byte{0x08}, 0x00) // base size 8
+	p.MstoreSmall([]byte{0x51}, 0x20) // exponent size 6
+	p.MstoreSmall([]byte{0x08}, 0x40) // modulo size 512
+	base := common.FromHex("0xffffffffffffffff")
+	p.Mstore(base, 0x60) // base
+	exp := []byte{}
+	for range 0x51 {
+		exp = append(exp, 0xff)
+	}
+	p.Mstore(exp, 0x260) // exponent
+	mod := common.FromHex("0xffffffffffffffff")
+	p.Mstore(mod, 0x266) // modulo
+	_, dest := p.Jumpdest()
+	p.StaticCall(uint256.NewInt(0xffff), 0x5, 0, 0x466, 0, 0x466)
+	p.Op(vm.POP)
+	p.Jump(dest)
+
+	code := p.Bytes()
+	f := filler.NewFiller([]byte("\x5a\x5a\x5a\x5a\x5a\x5a\x5a"))
+	testMaker := generator.CreateGstMaker(f, code)
+	if err := testMaker.Fill(nil); err != nil {
+		panic(err)
+	}
+	// Save the test
+	test := testMaker.ToGeneralStateTest("statetest.json")
+	storeTest(test, "statetest.json")
 }
