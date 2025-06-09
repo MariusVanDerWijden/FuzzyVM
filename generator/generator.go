@@ -105,7 +105,7 @@ func CreateGstMaker(fill *filler.Filler, code []byte) *fuzzing.GstMaker {
 	})
 	// Add the transaction
 	tx := &fuzzing.StTransaction{
-		GasLimit:   []uint64{20_000_000},
+		GasLimit:   []uint64{100_000_000},
 		Nonce:      0,
 		Value:      []string{randHex(fill, 4)},
 		Data:       []string{randHex(fill, 100)},
