@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
@@ -9,6 +10,25 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/bn256"
 	"github.com/holiman/uint256"
 )
+
+func createBN256Mul(f *filler.Filler) []byte {
+	k := f.BigInt32()
+	point := new(bn256.G1).ScalarBaseMult(k)
+
+	scalarFactor := f.BigInt32()
+
+	p := program.New()
+
+	p.Mstore(point.Marshal(), 0)
+	scalarBytes := common.LeftPadBytes(scalarFactor.Bytes(), 32)
+	p.Mstore(scalarBytes, 64)
+
+	_, dest := p.Jumpdest()
+	p.StaticCall(uint256.NewInt(6000), 0x7, 0, 96, 0, 64)
+	p.Op(vm.POP)
+	p.Jump(dest)
+	return p.Bytes()
+}
 
 func createBN256Add(f *filler.Filler) []byte {
 	k := f.BigInt32()
