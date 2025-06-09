@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -50,7 +51,7 @@ func createBN256Add(f *filler.Filler) []byte {
 func createBN256Pairing(f *filler.Filler) []byte {
 	var (
 		rounds                   = f.Byte()
-		curvePoints, twistPoints = pairing(int(rounds), f)
+		curvePoints, twistPoints = pairingBn(int(rounds), f)
 		inSize                   = uint32(len(curvePoints) * 192)
 		offset                   = uint32(0)
 		p                        = program.New()
@@ -77,7 +78,7 @@ func createBN256Pairing(f *filler.Filler) []byte {
 // with s = sum(x: 1 -> n: (aMulx * bMulx))
 // This code is analogous to https://github.com/holiman/goevmlab/blob/master/fuzzing/bls12381.go
 // Apparently it applies to barreto-naehrig curves too.
-func pairing(rounds int, f *filler.Filler) ([]*bn256.G1, []*bn256.G2) {
+func pairingBn(rounds int, f *filler.Filler) ([]*bn256.G1, []*bn256.G2) {
 	var (
 		curvePoints []*bn256.G1
 		twistPoints []*bn256.G2

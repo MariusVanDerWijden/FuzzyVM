@@ -5,36 +5,74 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
 	"github.com/ethereum/go-ethereum/core/vm/program"
 	"github.com/holiman/goevmlab/fuzzing"
+	"golang.org/x/sync/errgroup"
 )
 
+type test func(*filler.Filler) []byte
+
+var allTests = []test{
+	makeSnippet,
+	makeEcrecover,
+	makeDataCopy,
+	makeRipeMD,
+	makeBlake2f,
+	createBN256Add,
+	createBN256Pairing,
+	createRandomModexp,
+	createBN256Mul,
+	makeBLSMulExpG1,
+	makeBLSMulExpG2,
+	makeBLSAdd,
+	makeBLSAddG2,
+	makeBLSMapG1,
+	makeBLSMapG2,
+	makeBLSPairing,
+}
+
 func main() {
-	worst := time.Duration(0)
-	rnd := make([]byte, 10000)
+	test := len(allTests) - 1
+	writeTest := true
+	findWorstCases(allTests[test], writeTest)
+}
+
+func findWorstCases(generator test, writeTest bool) {
+	var worst atomic.Uint64
+	var count atomic.Uint64
+	worst.Store(uint64(time.Duration(0)))
 	start := time.Now()
-	for i := 0; ; i++ {
-		rand.Read(rnd)
-		//code := makeSnippet(filler.NewFiller(rnd))
-		code := makeEcrecover(filler.NewFiller(rnd))
-		//code := makeDataCopy(filler.NewFiller(rnd))
-		// code := makeRipeMD(filler.NewFiller(rnd))
-		// := makeBlake2f(filler.NewFiller(rnd))
-		//code := createBN256Pairing(filler.NewFiller(rnd))
-		//code := createBN256Add(filler.NewFiller(rnd))
-		// code := createRandomModexp(filler.NewFiller(rnd))
-		d := timeGeneration(code)
-		if d > worst {
-			worst = d
-			fmt.Printf("%.2fm: found new worst case, iteration %v: %v \n", time.Since(start).Minutes(), i, d)
-			if true || worst > 300*time.Millisecond {
-				writeOutTest(code, i)
-			}
+	for {
+		var group errgroup.Group
+		group.SetLimit(1)
+		for range 10000 {
+			group.Go(func() error {
+				rnd := make([]byte, 10000)
+				rand.Read(rnd)
+				code := generator(filler.NewFiller(rnd))
+				d := timeGeneration(code)
+				for w := time.Duration(worst.Load()); d > w; {
+					if !worst.CompareAndSwap(uint64(w), uint64(d)) {
+						cnt := count.Add(1)
+						fmt.Printf("%.2fm: found new worst case, cnt %v: %v \n", time.Since(start).Minutes(), cnt, d)
+						if writeTest || d > 1*time.Second {
+							writeOutTest(code, int(cnt))
+							if writeTest {
+								panic("shutting down")
+							}
+						}
+						return nil
+					}
+				}
+				return nil
+			})
 		}
+		group.Wait()
 	}
 }
 
