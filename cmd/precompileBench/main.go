@@ -10,7 +10,6 @@ import (
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
-	"github.com/ethereum/go-ethereum/core/vm/program"
 	"github.com/holiman/goevmlab/fuzzing"
 	"golang.org/x/sync/errgroup"
 )
@@ -20,20 +19,28 @@ type test func(*filler.Filler) []byte
 var allTests = []test{
 	makeSnippet,
 	makeEcrecover,
-	makeDataCopy,
-	makeRipeMD,
 	makeBlake2f,
-	createBN256Add,
 	createBN256Pairing,
 	createRandomModexp,
+	makeMstore,
+	makeSStore,
+	makeKZG,
 	createBN256Mul,
+	makeMstore2,
+	makeSdiv,
+	makeSStore2,
+	makeR1Recover,
 	makeBLSMulExpG1,
 	makeBLSMulExpG2,
-	makeBLSAdd,
 	makeBLSAddG2,
 	makeBLSMapG1,
 	makeBLSMapG2,
 	makeBLSPairing,
+	makeBLSAdd,
+	createBN256Add,
+	makeDataCopy,
+	makeRipeMD,
+	makeEcrecover,
 }
 
 func main() {
@@ -74,14 +81,6 @@ func findWorstCases(generator test, writeTest bool) {
 		}
 		group.Wait()
 	}
-}
-
-func makeSnippet(f *filler.Filler) []byte {
-	p := program.New()
-	_, dest := p.Jumpdest()
-	p.Append(f.ByteSlice(int(f.Byte())))
-	p.Jump(dest)
-	return p.Bytes()
 }
 
 func timeGeneration(code []byte) time.Duration {

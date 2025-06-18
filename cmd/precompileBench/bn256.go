@@ -25,7 +25,7 @@ func createBN256Mul(f *filler.Filler) []byte {
 	p.Mstore(scalarBytes, 64)
 
 	_, dest := p.Jumpdest()
-	p.StaticCall(uint256.NewInt(6000), 0x7, 0, 96, 0, 64)
+	p.StaticCall(nil, 0x7, 0, 96, 0, 64)
 	p.Op(vm.POP)
 	p.Jump(dest)
 	return p.Bytes()
