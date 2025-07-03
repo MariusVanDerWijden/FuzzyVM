@@ -95,21 +95,22 @@ type contract func(int) []byte
 
 func writeOutAllCalleeAccounts() {
 
-	writeCalleeAccounts("random_128_24k", 128, 24*1024, randomCalleeContract)
-	writeCalleeAccounts("random_12000_24k", 12_000, 24*1024, randomCalleeContract)
-	writeCalleeAccounts("random_12000_48k", 12_000, 48*1024, randomCalleeContract)
-	writeCalleeAccounts("random_12000_96k", 12_000, 96*1024, randomCalleeContract)
-	writeCalleeAccounts("random_12000_128k", 12_000, 128*1024, randomCalleeContract)
-	writeCalleeAccounts("random_37888_48k", 37*1024, 48*1024, randomCalleeContract)
-	writeCalleeAccounts("push2_12000_48k", 12_000, 48*1024, push2CalleeContract)
-	writeCalleeAccounts("jumpdest_12000_48k", 12_000, 48*1024, jumpdestCalleeContract)
+	writeCalleeAccounts("random_128_24k", 1, 128, 24*1024, randomCalleeContract)
+	writeCalleeAccounts("random_12000_24k", 2, 12_000, 24*1024, randomCalleeContract)
+	writeCalleeAccounts("random_12000_48k", 3, 12_000, 48*1024, randomCalleeContract)
+	writeCalleeAccounts("random_12000_96k", 4, 12_000, 96*1024, randomCalleeContract)
+	writeCalleeAccounts("random_12000_128k", 5, 12_000, 128*1024, randomCalleeContract)
+	writeCalleeAccounts("random_37888_48k", 6, 37*1024, 48*1024, randomCalleeContract)
+	writeCalleeAccounts("push2_12000_48k", 7, 12_000, 48*1024, push2CalleeContract)
+	writeCalleeAccounts("jumpdest_12000_48k", 8, 12_000, 48*1024, jumpdestCalleeContract)
 }
 
-func writeCalleeAccounts(name string, count, size int, codeFn contract) {
+func writeCalleeAccounts(name string, offset byte, count, size int, codeFn contract) {
 	accounts := make(map[common.Address]fuzzing.GenesisAccount, 0)
 	for i := range count {
 		rawAddr := make([]byte, 20)
-		binary.BigEndian.PutUint16(rawAddr, uint16(i))
+		binary.BigEndian.PutUint16(rawAddr[1:], uint16(i))
+		rawAddr[0] = offset
 		acc := common.BytesToAddress(rawAddr)
 		accounts[acc] = fuzzing.GenesisAccount{
 			Code:    codeFn(size),
