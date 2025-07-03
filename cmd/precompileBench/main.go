@@ -101,6 +101,8 @@ func writeOutAllCalleeAccounts() {
 	writeCalleeAccounts("random_12000_96k", 12_000, 96*1024, randomCalleeContract)
 	writeCalleeAccounts("random_12000_128k", 12_000, 128*1024, randomCalleeContract)
 	writeCalleeAccounts("random_37888_48k", 37*1024, 48*1024, randomCalleeContract)
+	writeCalleeAccounts("push2_12000_48k", 12_000, 48*1024, push2CalleeContract)
+	writeCalleeAccounts("jumpdest_12000_48k", 12_000, 48*1024, jumpdestCalleeContract)
 }
 
 func writeCalleeAccounts(name string, count, size int, codeFn contract) {
@@ -164,6 +166,31 @@ func randomCalleeContract(size int) []byte {
 	rnd := make([]byte, size-128-5)
 	rand.Read(rnd)
 	p.Append(rnd)
+	for range 128 {
+		p.Op(vm.JUMPDEST)
+	}
+	return p.Bytes()
+}
+
+func jumpdestCalleeContract(size int) []byte {
+	p := program.New()
+	p.Jump(size - 5)
+	for range size - 128 - 5 {
+		p.Op(vm.JUMPDEST)
+	}
+	for range 128 {
+		p.Op(vm.JUMPDEST)
+	}
+	return p.Bytes()
+}
+
+func push2CalleeContract(size int) []byte {
+	p := program.New()
+	p.Jump(size - 5)
+	for range size - 128 - 5 {
+		p.Op(vm.PUSH2)
+		p.Append([]byte{0xff, 0xff})
+	}
 	for range 128 {
 		p.Op(vm.JUMPDEST)
 	}
