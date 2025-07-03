@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,6 +11,9 @@ import (
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/core/vm/program"
 	"github.com/holiman/goevmlab/fuzzing"
 	"golang.org/x/sync/errgroup"
 )
@@ -44,9 +48,13 @@ var allTests = []test{
 }
 
 func main() {
-	test := len(allTests) - 1
-	writeTest := true
-	findWorstCases(allTests[test], writeTest)
+	/*
+		test := len(allTests) - 1
+		writeTest := true
+		findWorstCases(allTests[test], writeTest)
+	*/
+	//makeCallerTest()
+	writeOutAllCalleeAccounts()
 }
 
 func findWorstCases(generator test, writeTest bool) {
@@ -81,6 +89,106 @@ func findWorstCases(generator test, writeTest bool) {
 		}
 		group.Wait()
 	}
+}
+
+type contract func(int) []byte
+
+func writeOutAllCalleeAccounts() {
+
+	writeCalleeAccounts("random_128_24k", 128, 24*1024, randomCalleeContract)
+	writeCalleeAccounts("random_12000_24k", 12_000, 24*1024, randomCalleeContract)
+	writeCalleeAccounts("random_12000_48k", 12_000, 48*1024, randomCalleeContract)
+	writeCalleeAccounts("random_12000_96k", 12_000, 96*1024, randomCalleeContract)
+	writeCalleeAccounts("random_12000_128k", 12_000, 128*1024, randomCalleeContract)
+	writeCalleeAccounts("random_37888_48k", 37*1024, 48*1024, randomCalleeContract)
+}
+
+func writeCalleeAccounts(name string, count, size int, codeFn contract) {
+	accounts := make(map[common.Address]fuzzing.GenesisAccount, 0)
+	for i := range count {
+		rawAddr := make([]byte, 20)
+		binary.BigEndian.PutUint16(rawAddr, uint16(i))
+		acc := common.BytesToAddress(rawAddr)
+		accounts[acc] = fuzzing.GenesisAccount{
+			Code:    codeFn(size),
+			Nonce:   1,
+			Balance: common.Big0,
+		}
+	}
+	path := name + ".json"
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
+	if err != nil {
+		panic(fmt.Sprintf("Could not open test file %q: %v", path, err))
+	}
+	defer f.Close()
+	// Write to file
+	encoder := json.NewEncoder(f)
+	if err = encoder.Encode(accounts); err != nil {
+		panic(fmt.Sprintf("Could not encode state test %q: %v", path, err))
+	}
+}
+
+// count := 1024 * 37
+func callerContract(count int) ([]byte, []common.Address) {
+	accounts := []common.Address{}
+	p := program.New()
+	for range count {
+		rnd := make([]byte, 20)
+		rand.Read(rnd)
+		acc := common.BytesToAddress(rnd)
+		accounts = append(accounts, acc)
+		p.StaticCall(nil, acc, 0, 0, 0, 0)
+		p.Op(vm.POP)
+	}
+	return p.Bytes(), accounts
+}
+
+func callerContract2(count int) ([]byte, []common.Address) {
+	accounts := []common.Address{}
+	p := program.New()
+	for range count {
+		rnd := make([]byte, 20)
+		rand.Read(rnd)
+		acc := common.BytesToAddress(rnd)
+		accounts = append(accounts, acc)
+		p.Push(acc)
+		p.Op(vm.EXTCODESIZE)
+		p.Op(vm.POP)
+	}
+	return p.Bytes(), accounts
+}
+
+func randomCalleeContract(size int) []byte {
+	p := program.New()
+	p.Jump(size - 5)
+	rnd := make([]byte, size-128-5)
+	rand.Read(rnd)
+	p.Append(rnd)
+	for range 128 {
+		p.Op(vm.JUMPDEST)
+	}
+	return p.Bytes()
+}
+
+func makeCallerTest() {
+	count := 1024 * 37
+	code, accounts := callerContract2(count)
+	contractCode := randomCalleeContract(32 * 1024)
+	f := filler.NewFiller([]byte("\x5a\x5a\x5a\x5a\x5a\x5a\x5a"))
+	testMaker := generator.CreateGstMaker(f, code)
+	start := time.Now()
+	if err := testMaker.Fill(nil); err != nil {
+		panic(err)
+	}
+	for _, account := range accounts {
+		testMaker.AddAccount(account, fuzzing.GenesisAccount{
+			Code:    contractCode,
+			Nonce:   1,
+			Balance: common.Big0,
+		})
+	}
+	fmt.Printf("Filled in %v\n", time.Since(start))
+	storeTest(testMaker.ToGeneralStateTest("test"), "statetest-sload.json")
 }
 
 func timeGeneration(code []byte) time.Duration {
