@@ -33,4 +33,21 @@ var (
 		Usage: "Number of generator threads started (default = NUMCPU)",
 		Value: runtime.NumCPU(),
 	}
+
+	inputFlag = &cli.StringFlag{
+		Name:  "in",
+		Usage: "Input file containing one hex bytecode per line",
+	}
+
+	outputFlag = &cli.StringFlag{
+		Name:  "out",
+		Usage: "Output directory",
+		Value: outputRootDir,
+	}
+
+	forkFlag = &cli.StringFlag{
+		Name:  "fork",
+		Usage: "Specifies the fork to enable for the generated tests",
+		Value: "Prague",
+	}
 )

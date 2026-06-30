@@ -18,6 +18,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha1"
 	"fmt"
@@ -25,11 +26,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/benchmark"
 	"github.com/MariusVanDerWijden/FuzzyVM/fuzzer"
+	"github.com/MariusVanDerWijden/FuzzyVM/generator"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -66,6 +70,17 @@ var runCommand = &cli.Command{
 	},
 }
 
+var fillCommand = &cli.Command{
+	Name:   "fill",
+	Usage:  "Creates tests out of a file of hex bytecodes (one per line)",
+	Action: fill,
+	Flags: []cli.Flag{
+		inputFlag,
+		outputFlag,
+		forkFlag,
+	},
+}
+
 func initApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = "FuzzyVM"
@@ -75,6 +90,7 @@ func initApp() *cli.App {
 		corpusCommand,
 		minCorpusCommand,
 		runCommand,
+		fillCommand,
 	}
 	return app
 }
@@ -189,6 +205,38 @@ func minimizeCorpus(c *cli.Context) error {
 		}
 	}
 	return nil
+}
+
+func fill(c *cli.Context) error {
+	var (
+		in   = c.String(inputFlag.Name)
+		out  = c.String(outputFlag.Name)
+		fork = c.String(forkFlag.Name)
+	)
+	ensureDirs(out)
+	contents, err := os.ReadFile(in)
+	if err != nil {
+		return err
+	}
+	scanner := bufio.NewScanner(bytes.NewBuffer(contents))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		code := common.FromHex(line)
+		h := sha3.New256()
+		h.Write(code)
+		var (
+			finalName = fmt.Sprintf("FuzzyVM-%v", common.Bytes2Hex(h.Sum(nil)))
+			path      = fmt.Sprintf("%v/%v.json", out, finalName)
+		)
+		maker := generator.CreateGstMakerWithTx("0x1234", "0x12343210", code)
+		maker.EnableFork(fork)
+		test := maker.ToGeneralStateTest(finalName)
+		fuzzer.StoreTest(test, path)
+	}
+	return scanner.Err()
 }
 
 func ensureDirs(dirs ...string) {
