@@ -11,6 +11,13 @@ import (
 	"github.com/holiman/uint256"
 )
 
+func createRandomModexp(f *filler.Filler) []byte {
+	base := f.ByteSlice(int(f.Uint16()))
+	exp := f.ByteSlice(int(f.Uint16()))
+	mod := f.ByteSlice(int(f.Uint16()))
+	return createModTestcase(base, exp, mod)
+}
+
 func createModexpStateTest() {
 	base := common.FromHex("0xffffffffffffffff")
 	exp := []byte{}
