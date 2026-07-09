@@ -113,19 +113,29 @@ func setupTrace(name string) *os.File {
 
 // maxTraceSize caps the trace output buffered in memory during minimization.
 // Programs that produce larger traces (e.g. loops that run until out of gas)
-// are too expensive to minimize and are rejected with errTraceTooLarge.
-const maxTraceSize = 32 * 1024 * 1024
+// are too expensive to minimize and are rejected with ErrTraceTooLarge.
+//
+// GstMaker.Fill stops after writing maxTraceSize bytes, so a trace that hit the
+// limit comes back at (or just under) maxTraceSize with no error. We can't tell
+// such a truncated trace from a genuine one, so treat anything within
+// traceSizeMargin of the limit as overflow: a result of 32MB-1k is almost
+// certainly a program that would have exceeded 32MB.
+const (
+	maxTraceSize    = 32 * 1024 * 1024
+	traceSizeMargin = 1024
+)
 
-var errTraceTooLarge = errors.New("trace too large to minimize")
+var ErrTraceTooLarge = errors.New("trace too large to minimize")
 
-// cappedBuffer buffers writes up to maxTraceSize and discards the rest.
+// cappedBuffer buffers writes and flags overflow once it comes within
+// traceSizeMargin of maxTraceSize.
 type cappedBuffer struct {
 	buf      bytes.Buffer
 	overflow bool
 }
 
 func (c *cappedBuffer) Write(p []byte) (int, error) {
-	if c.overflow || c.buf.Len()+len(p) > maxTraceSize {
+	if c.overflow || c.buf.Len()+len(p) > maxTraceSize-traceSizeMargin {
 		c.overflow = true
 		return len(p), nil
 	}
@@ -138,7 +148,7 @@ func MinimizeProgram(test *fuzzing.GstMaker) (*fuzzing.GstMaker, []byte, error) 
 		return nil, nil, err
 	}
 	if original.overflow {
-		return nil, nil, errTraceTooLarge
+		return nil, nil, ErrTraceTooLarge
 	}
 	name := ""
 	gstPtr := test.ToGeneralStateTest(name)

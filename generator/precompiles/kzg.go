@@ -35,7 +35,11 @@ type kzgCaller struct{}
 
 func (*kzgCaller) call(p *program.Program, f *filler.Filler) error {
 	var input []byte
-	if f.Bool() {
+	// Building a valid input runs a real KZG proof (~20ms), which is far more
+	// expensive than any other generator step and gets re-run during
+	// minimization. Take the valid path only ~1/8 of the time so it still
+	// exercises the proof-verification math without dominating throughput.
+	if f.Byte() < 32 {
 		// Valid input: a real commitment/proof over a random blob. If the KZG
 		// setup can't be built (e.g. bad randomness), fall back to random bytes
 		// rather than failing the whole generation.
@@ -61,6 +65,14 @@ func (*kzgCaller) call(p *program.Program, f *filler.Filler) error {
 	p.Mstore(input, 0)
 	CallRandomizer(p, f, c)
 	return nil
+}
+
+// WarmupKZG pays the one-time KZG trusted-setup initialization cost (~1.8s in
+// go-ethereum's kzg4844) up front, so it doesn't stall the first fuzzing input
+// that happens to build a valid KZG proof. Safe to call more than once.
+func WarmupKZG() {
+	// A short, fixed seed is enough to force the lazy setup; ignore the result.
+	_, _ = validKZGInput(filler.NewFiller([]byte{1, 2, 3, 4, 5, 6, 7, 8}))
 }
 
 // validKZGInput builds the 192-byte point-evaluation input:

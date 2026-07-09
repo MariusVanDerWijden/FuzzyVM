@@ -3,34 +3,183 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
-	"flag"
+	"errors"
 	"fmt"
 	"log"
+	"net"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/fuzzer"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
 	"github.com/cockroachdb/pebble"
+	"github.com/urfave/cli/v2"
 )
 
-var dbFile = "fuzzyvm-db.pebble"
+const (
+	// defaultDBFile is used when -db is not supplied.
+	defaultDBFile = "fuzzyvm-db.pebble"
+	// sockEnvKey names the env var carrying the Unix socket path that the
+	// FuzzEVM worker subprocesses (spawned by `generate` via `go test -fuzz`)
+	// use to reach the database-owning server. pebble locks the directory
+	// exclusively, so workers can't open their own handle; they talk to the one
+	// writer over this socket instead.
+	sockEnvKey = "FUZZYVM_SOCK"
+)
+
+var dbFlag = &cli.StringFlag{
+	Name:  "db",
+	Usage: "path to the pebble database",
+	Value: defaultDBFile,
+}
+
+var inspectCommand = &cli.Command{
+	Name:   "inspect",
+	Usage:  "print statistics about an existing database",
+	Action: inspect,
+	Flags:  []cli.Flag{dbFlag},
+}
+
+var generateCommand = &cli.Command{
+	Name:   "generate",
+	Usage:  "coverage-guided fuzzing that fills the database with EVM bytecodes",
+	Action: generate,
+	Flags: []cli.Flag{
+		dbFlag,
+		&cli.IntFlag{
+			Name:    "procs",
+			Aliases: []string{"p"},
+			Usage:   "number of parallel fuzzing workers (0 = one per CPU)",
+			Value:   0,
+		},
+		&cli.DurationFlag{
+			Name:  "time",
+			Usage: "how long to fuzz for (0 = until interrupted)",
+			Value: 0,
+		},
+	},
+}
 
 func main() {
-	path := flag.String("db", dbFile, "path to the pebble database")
-	flag.Parse()
-
-	// Open read-only so the stats tool neither creates an empty db
-	// nor contends with a running fuzzer for the directory lock.
-	db, err := pebble.Open(*path, &pebble.Options{ReadOnly: true, ErrorIfNotExists: true})
-	if err != nil {
+	app := cli.NewApp()
+	app.Name = "fuzzyvm-db"
+	app.Usage = "build and inspect a content-addressed database of EVM bytecodes"
+	app.Commands = []*cli.Command{
+		inspectCommand,
+		generateCommand,
+	}
+	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
+	}
+}
+
+// socketAddr returns the server socket path for the FuzzEVM harness, or "" if
+// unset (in which case the harness falls back to a local pebble handle, e.g.
+// when run directly via `go test`).
+func socketAddr() string {
+	return os.Getenv(sockEnvKey)
+}
+
+// inspect prints statistics about an existing database.
+func inspect(ctx *cli.Context) error {
+	path := ctx.String(dbFlag.Name)
+	// Open read-only so the stats command neither creates an empty db
+	// nor contends with a running fuzzer for the directory lock.
+	db, err := pebble.Open(path, &pebble.Options{ReadOnly: true, ErrorIfNotExists: true})
+	if err != nil {
+		return err
 	}
 	defer db.Close()
 
 	metrics := db.Metrics()
-	fmt.Printf("Reading metrics for %v\n", *path)
+	fmt.Printf("Reading metrics for %v\n", path)
 	fmt.Printf("Estimated disk usage: %.2fM\n", float64(metrics.DiskSpaceUsage())/1024/1024)
 	fmt.Printf("Key count: %v\n", countKeys(db))
+	return nil
+}
+
+// generate runs coverage-guided fuzzing that fills the database with EVM
+// bytecodes, scaling across CPU cores.
+//
+// pebble locks its directory exclusively, so only this process can hold the
+// database open. It therefore opens pebble read-write, listens on a Unix
+// socket, and spawns `go test -fuzz=FuzzEVM -parallel=N`. Each worker
+// subprocess gets independent coverage guidance from the Go fuzzer, checks the
+// database with a HAS query over the socket before the expensive minimization
+// step, and streams new bytecodes back with PUT for this process to store.
+func generate(ctx *cli.Context) error {
+	procs := ctx.Int("procs")
+	if procs <= 0 {
+		procs = runtime.NumCPU()
+	}
+	dbPath, err := filepath.Abs(ctx.String(dbFlag.Name))
+	if err != nil {
+		return err
+	}
+	pkgDir, err := packageDir()
+	if err != nil {
+		return err
+	}
+
+	// Open the one read-write handle to the database.
+	pdb, err := createDB(dbPath)
+	if err != nil {
+		return err
+	}
+	defer pdb.Close()
+
+	// Listen on a Unix socket in a temp dir; the path goes to the workers.
+	sockDir, err := os.MkdirTemp("", "fuzzyvm-sock-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(sockDir)
+	sockPath := filepath.Join(sockDir, "db.sock")
+	ln, err := net.Listen("unix", sockPath)
+	if err != nil {
+		return err
+	}
+	defer ln.Close()
+
+	srv := newServer(pdb, ln)
+	go srv.serve()
+
+	args := []string{
+		"test",
+		"-run=^$",         // don't run unit tests, only fuzz
+		"-fuzz=^FuzzEVM$", // the harness that fills the db
+		fmt.Sprintf("-parallel=%d", procs),
+	}
+	if d := ctx.Duration("time"); d > 0 {
+		args = append(args, fmt.Sprintf("-fuzztime=%s", d))
+	}
+	args = append(args, pkgDir)
+
+	cmd := exec.Command("go", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", sockEnvKey, sockPath))
+
+	fmt.Printf("Fuzzing into %v with %d workers\n", dbPath, procs)
+	err = cmd.Run()
+
+	// Stop accepting connections and report what landed.
+	ln.Close()
+	fmt.Printf("Stored %d new codes (%d candidates received)\n", srv.stored.Load(), srv.received.Load())
+	return err
+}
+
+// packageDir returns the directory of this command's Go package, so `go test`
+// can be pointed at it from any working directory.
+func packageDir() (string, error) {
+	out, err := exec.Command("go", "list", "-f", "{{.Dir}}", "github.com/MariusVanDerWijden/FuzzyVM/cmd/fuzzyvm-db").Output()
+	if err != nil {
+		return "", fmt.Errorf("locating fuzzyvm-db package (is the Go toolchain available?): %w", err)
+	}
+	return string(bytes.TrimSpace(out)), nil
 }
 
 func countKeys(db *pebble.DB) int {
@@ -99,8 +248,14 @@ func (db *pebbleDB) Close() error {
 	return db.db.Close()
 }
 
+// isNotFound reports whether err signals a missing key, from either a direct
+// pebble handle or the socketDB (which returns pebble.ErrNotFound too).
+func isNotFound(err error) bool {
+	return errors.Is(err, pebble.ErrNotFound)
+}
+
 func hasCode(db db, code []byte) (bool, error) {
-	if _, err := db.Get(makeKey(code)); err == pebble.ErrNotFound {
+	if _, err := db.Get(makeKey(code)); isNotFound(err) {
 		return false, nil
 	} else if err != nil {
 		return false, err
@@ -126,7 +281,11 @@ func run(db db, input []byte) error {
 		return nil
 	}
 	_, minCode, err := fuzzer.MinimizeProgram(gst)
-	if err != nil {
+	if errors.Is(err, fuzzer.ErrTraceTooLarge) {
+		// The trace is too large to run, so there's no way to minimize it.
+		// Still worth keeping: store the full bytecode as-is.
+		return putCode(db, bytecode)
+	} else if err != nil {
 		// A program that fails to minimize is not worth stopping a campaign for.
 		log.Printf("skipping program that failed to minimize: %v", err)
 		return nil

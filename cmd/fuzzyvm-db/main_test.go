@@ -1,8 +1,11 @@
 package main
 
 import (
+	"os"
 	"sync"
 	"testing"
+
+	"github.com/MariusVanDerWijden/FuzzyVM/generator/precompiles"
 )
 
 // The db is opened lazily inside the fuzz callback: with `go test -fuzz`, the
@@ -18,11 +21,25 @@ var (
 func FuzzEVM(f *testing.F) {
 	f.Fuzz(func(t *testing.T, a []byte) {
 		fuzzDBOnce.Do(func() {
-			db, err := createDB(dbFile)
-			if err != nil {
-				panic(err)
+			precompiles.WarmupKZG()
+			// Connect to the server.
+			if addr := socketAddr(); addr != "" {
+				db, err := dialSocketDB(addr)
+				if err != nil {
+					panic(err)
+				}
+				fuzzDB = db
+			} else {
+				dir, err := os.MkdirTemp("", "fuzzyvm-fuzz-")
+				if err != nil {
+					panic(err)
+				}
+				db, err := createDB(dir + "/fuzz.pebble")
+				if err != nil {
+					panic(err)
+				}
+				fuzzDB = db
 			}
-			fuzzDB = db
 		})
 		if err := run(fuzzDB, a); err != nil {
 			t.Fatal(err)
@@ -31,13 +48,14 @@ func FuzzEVM(f *testing.F) {
 }
 
 func TestEVM(t *testing.T) {
-	db, err := createDB(dbFile)
+	path := t.TempDir() + "/test.pebble"
+	db, err := createDB(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	db.Close()
 
-	db, err = createDB(dbFile)
+	db, err = createDB(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +64,7 @@ func TestEVM(t *testing.T) {
 
 func TestRepro(t *testing.T) {
 	input := []byte("0¨\x99ž\xb8>\xb0]\xd17\b*\xe9ן:\xd1")
-	db, err := createDB(dbFile)
+	db, err := createDB(t.TempDir() + "/test.pebble")
 	if err != nil {
 		t.Fatal(err)
 	}
