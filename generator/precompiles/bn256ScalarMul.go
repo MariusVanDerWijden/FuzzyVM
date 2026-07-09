@@ -20,7 +20,6 @@ import (
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm/program"
-	"github.com/ethereum/go-ethereum/crypto/bn256"
 	"github.com/holiman/uint256"
 )
 
@@ -29,8 +28,7 @@ var bn256mulAddr = common.HexToAddress("0x7")
 type bn256MulCaller struct{}
 
 func (*bn256MulCaller) call(p *program.Program, f *filler.Filler) error {
-	k := f.BigInt32()
-	point := new(bn256.G1).ScalarBaseMult(k)
+	point := bn256G1ScalarBaseMult(f.BigInt32())
 	scalar := f.BigInt32()
 	c := CallObj{
 		Gas:       uint256.MustFromBig(f.GasInt()),
@@ -42,7 +40,7 @@ func (*bn256MulCaller) call(p *program.Program, f *filler.Filler) error {
 		Value:     f.BigInt32(),
 	}
 	// 64 bytes curve point
-	p.Mstore(point.Marshal(), 0)
+	p.Mstore(point, 0)
 	// 32 bytes scalar
 	bytes := make([]byte, 32)
 	copy(bytes, scalar.Bytes())

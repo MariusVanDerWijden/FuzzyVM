@@ -71,6 +71,13 @@ func readCorpus() []string {
 }
 
 func FuzzVMBasic(f *testing.F) {
+	// The seed corpus plus 255 constant-byte seeds each run a full program
+	// generation + EVM execution, which makes a plain `go test` run of this
+	// package very slow. Skip it under -short; run it explicitly with
+	// `go test -run=FuzzVMBasic` or `-fuzz=FuzzVMBasic`.
+	if testing.Short() {
+		f.Skip("FuzzVMBasic runs the full EVM over every seed; skipped in -short mode")
+	}
 	corpus := readCorpus()
 	for _, elem := range corpus {
 		f.Add([]byte(elem))
@@ -106,7 +113,11 @@ func TestFuzzer(t *testing.T) {
 }
 
 func TestMinimizeProgram(t *testing.T) {
-	// Only local test, should not be run in test pipeline
+	// Only a local test (writes state-test files to disk); skip it in the normal
+	// pipeline and under -short.
+	if testing.Short() {
+		t.Skip("TestMinimizeProgram writes files to disk; skipped in -short mode")
+	}
 	data := "asdfadfasdfasdfasdfasdfasdfadsfldlafdsgoinsfandofaijdsf"
 	f := filler.NewFiller([]byte(data))
 	testMaker, _ := generator.GenerateProgram(f)

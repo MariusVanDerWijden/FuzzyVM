@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -111,7 +110,7 @@ func corpus(c *cli.Context) error {
 		}
 		hash := sha1.Sum(elem)
 		filename := fmt.Sprintf("%v/%v", dir, common.Bytes2Hex(hash[:]))
-		if err := ioutil.WriteFile(filename, elem, 0755); err != nil {
+		if err := os.WriteFile(filename, elem, 0755); err != nil {
 			fmt.Printf("Error while writing corpus element: %v\n", err)
 			return err
 		}
@@ -159,32 +158,50 @@ func startGenerator(genThreads int) *exec.Cmd {
 func minimizeCorpus(c *cli.Context) error {
 	const dir = "corpus"
 	ensureDirs(dir)
-	infos, err := ioutil.ReadDir(outputRootDir)
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return err
 	}
-	toDelete := make(map[string]struct{})
-	for i, info := range infos {
-		f, err := ioutil.ReadFile(info.Name())
+	// Read every corpus file up front. dir entries only carry the basename, so
+	// join with dir to get a path that os.ReadFile / os.Remove can actually use
+	// — the previous code read/removed by basename relative to the CWD, which
+	// silently failed and made this a no-op.
+	type corpusFile struct {
+		path string
+		data []byte
+	}
+	var files []corpusFile
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		path := filepath.Join(dir, entry.Name())
+		data, err := os.ReadFile(path)
 		if err != nil {
 			continue
 		}
-		for k, info2 := range infos {
+		files = append(files, corpusFile{path: path, data: data})
+	}
+	// A corpus element is redundant if it is a prefix of another element: the
+	// longer one already covers it. Mark those for deletion.
+	toDelete := make(map[string]struct{})
+	for i, f := range files {
+		for k, g := range files {
 			if k == i {
 				continue
 			}
-			h, err := ioutil.ReadFile(info2.Name())
-			if err != nil {
+			// Skip identical files in one direction so we don't delete both.
+			if len(f.data) == len(g.data) && k < i {
 				continue
 			}
-			if bytes.HasPrefix(h, f) {
-				toDelete[info2.Name()] = struct{}{}
+			if bytes.HasPrefix(g.data, f.data) {
+				toDelete[g.path] = struct{}{}
 			}
 		}
 	}
-	for name := range toDelete {
-		fmt.Printf("Removing corpus file: %v\n", name)
-		if err := os.Remove(name); err != nil {
+	for path := range toDelete {
+		fmt.Printf("Removing corpus file: %v\n", path)
+		if err := os.Remove(path); err != nil {
 			return err
 		}
 	}

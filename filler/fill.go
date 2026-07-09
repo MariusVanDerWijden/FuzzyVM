@@ -98,8 +98,8 @@ func (f *Filler) BigInt256() *big.Int {
 }
 
 // GasInt returns a new big int to be used as a gas value.
-// With probability 254/255 its in [0, 20.000.000].
-// With probability 1/255 its in [0, 2^32].
+// With probability 252/255 it's in [0, 20.000.000].
+// With probability 1/255 each it's in [0, 2^32], [0, 2^64] or [0, 2^256].
 func (f *Filler) GasInt() *big.Int {
 	b := f.Byte()
 	if b == 253 {
@@ -114,10 +114,10 @@ func (f *Filler) GasInt() *big.Int {
 }
 
 // MemInt returns a new big int to be used as a memory or offset value.
-// With probability 252/255 its in [0, 256].
-// With probability 1/255 its in [0, 2^32].
-// With probability 1/255 its in [0, 2^64].
-// With probability 1/255 its in [0, 2^256].
+// With probability 252/255 it's in [0, 255].
+// With probability 1/255 it's in [0, 2^32].
+// With probability 1/255 it's in [0, 2^64].
+// With probability 1/255 it's in [0, 2^256].
 func (f *Filler) MemInt() *big.Int {
 	b := f.Byte()
 	if b == 253 {
@@ -136,8 +136,11 @@ func (f *Filler) ByteSlice(items int) []byte {
 	b := make([]byte, items)
 	if f.pointer+items < len(f.data) {
 		copy(b, f.data[f.pointer:])
+		f.incPointer(items)
 	} else {
-		// Not enough data available
+		// Not enough data available: wrap around, reading from the current
+		// pointer and restarting from 0 as needed.
+		start := f.pointer
 		for i := 0; i < items; {
 			it := copy(b[i:], f.data[f.pointer:])
 			if it == 0 {
@@ -146,9 +149,12 @@ func (f *Filler) ByteSlice(items int) []byte {
 			i += it
 			f.pointer = 0
 		}
+		// The next unread byte is `items` positions past where we started, mod
+		// the data length. Set it from the start offset rather than advancing
+		// from 0, which would skip the bytes consumed before the wrap.
+		f.pointer = (start + items) % len(f.data)
 		f.usedUp = true
 	}
-	f.incPointer(items)
 	return b
 }
 

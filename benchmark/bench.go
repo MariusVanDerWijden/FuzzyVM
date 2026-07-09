@@ -25,9 +25,11 @@ func printResult(name string, time time.Duration, err error) {
 }
 
 func newFiller() (*filler.Filler, error) {
-	rand.Seed(12345)
+	// Deterministic seed so benchmark runs are comparable. Uses a local source
+	// rather than the deprecated global rand.Seed.
+	rng := rand.New(rand.NewSource(12345))
 	rnd := make([]byte, 40)
-	if _, err := rand.Read(rnd); err != nil {
+	if _, err := rng.Read(rnd); err != nil {
 		return nil, err
 	}
 	return filler.NewFiller(rnd), nil

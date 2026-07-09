@@ -19,8 +19,8 @@ package precompiles
 import (
 	"testing"
 
+	bn254 "github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
-	bn256 "github.com/ethereum/go-ethereum/crypto/bn256/cloudflare"
 )
 
 func TestPairing(t *testing.T) {
@@ -28,8 +28,20 @@ func TestPairing(t *testing.T) {
 	data := []byte{1, 2, 3, 3, 4, 5, 6, 7, 7, 8, 8, 2, 2, 3}
 	f := filler.NewFiller(data)
 	a, b := pairing(i, f)
-	out := bn256.PairingCheck(a, b)
+	// gnark's PairingCheck takes value slices; deref our pointers.
+	ps := make([]bn254.G1Affine, len(a))
+	for i, p := range a {
+		ps[i] = *p
+	}
+	qs := make([]bn254.G2Affine, len(b))
+	for i, q := range b {
+		qs[i] = *q
+	}
+	out, err := bn254.PairingCheck(ps, qs)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !out {
-		t.Fail()
+		t.Fatal("constructed pairing did not verify")
 	}
 }

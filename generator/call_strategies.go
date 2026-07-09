@@ -56,25 +56,21 @@ func (*createCallRNGGenerator) String() string {
 type createCallGenerator struct{}
 
 func (*createCallGenerator) Execute(env Environment) {
-	// Prevent to deep recursion
-	if recursionLevel > maxRecursionLevel {
+	// Prevent too deep recursion. recursionLevel is per-generation, so this
+	// only bounds the current call tree, not the whole fuzzer process.
+	if env.recursionLevel >= maxRecursionLevel {
 		return
 	}
-	recursionLevel++
-	// Create and call a meaningful program
+	// Create and call a meaningful program, generated one level deeper.
 	var (
 		seedLen   = env.f.Uint16()
 		seed      = env.f.ByteSlice(int(seedLen))
 		newFiller = filler.NewFiller(seed)
-		_, code   = GenerateProgram(newFiller)
+		_, code   = generateProgram(newFiller, env.recursionLevel+1)
 		isCreate2 = env.f.Bool()
 		callOp    = vm.OpCode(env.f.Byte())
 	)
 	env.CreateAndCall(code, isCreate2, callOp)
-	// Decreasing recursion level generates to heavy test cases,
-	// so once we reach maxRecursionLevel we don't create new CreateAndCalls.
-
-	// recursionLevel--
 }
 
 func (*createCallGenerator) Importance() int {
@@ -120,7 +116,9 @@ func (*randomCallGenerator) String() string {
 type callPrecompileGenerator struct{}
 
 func (*callPrecompileGenerator) Execute(env Environment) {
-	precompiles.CallPrecompile(env.p, env.f)
+	// Ignore errors: a failure to build the precompile input just means this
+	// strategy contributes nothing to the program, not that anything crashed.
+	_ = precompiles.CallPrecompile(env.p, env.f)
 }
 
 func (*callPrecompileGenerator) Importance() int {

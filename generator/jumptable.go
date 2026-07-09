@@ -65,8 +65,11 @@ func (j *Jumptable) InsertJumps(bytecode []byte) []byte {
 		if pc, ok := checkCond(bytecode, pc); ok {
 			set := false
 			for i, dest := range j.dests {
-				// allow jump if enough instructions passed
-				if pc-dest.pc > j.minDist {
+				// allow jump if enough instructions passed. Guard pc > dest.pc
+				// first: these are uint64, so a destination registered after
+				// this jump site would otherwise underflow and always satisfy
+				// the check, silently bypassing the minimum spacing.
+				if pc > dest.pc && pc-dest.pc > j.minDist {
 					bytecode = insertJumpdest(bytecode, pc, j.rem(i).jumpdest)
 					set = true
 					break
@@ -93,6 +96,10 @@ func (j *Jumptable) InsertJumps(bytecode []byte) []byte {
 
 func checkCond(bytecode []byte, pc uint64) (uint64, bool) {
 	for i := uint64(1); i < 5; i++ {
+		// Reading up to bytecode[pc+i+7]; stop if that would run past the end.
+		if pc+i+7 >= uint64(len(bytecode)) {
+			break
+		}
 		if bytecode[pc+i] == bytecode[pc+i+1] &&
 			bytecode[pc+i] == bytecode[pc+i+2] &&
 			bytecode[pc+i] == bytecode[pc+i+3] &&
