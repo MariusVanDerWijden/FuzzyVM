@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"sync"
 	"sync/atomic"
 )
 
@@ -16,10 +17,15 @@ type dbServer struct {
 	ln       net.Listener
 	stored   atomic.Int64 // codes newly written
 	received atomic.Int64 // PUT blobs seen (incl. duplicates)
+
+	wg    sync.WaitGroup // tracks live connection handlers
+	mu    sync.Mutex     // guards conns / closing
+	conns map[net.Conn]struct{}
+	closing bool
 }
 
 func newServer(db db, ln net.Listener) *dbServer {
-	return &dbServer{db: db, ln: ln}
+	return &dbServer{db: db, ln: ln, conns: make(map[net.Conn]struct{})}
 }
 
 // serve accepts connections until the listener is closed.
@@ -30,12 +36,54 @@ func (s *dbServer) serve() {
 			// Listener closed on shutdown; stop quietly.
 			return
 		}
-		go s.handle(conn)
+		if !s.trackConn(conn) {
+			conn.Close() // shutting down; refuse new work
+			continue
+		}
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			s.handle(conn)
+		}()
 	}
+}
+
+// trackConn registers a live connection, returning false if the server is
+// already shutting down.
+func (s *dbServer) trackConn(conn net.Conn) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closing {
+		return false
+	}
+	s.conns[conn] = struct{}{}
+	return true
+}
+
+func (s *dbServer) untrackConn(conn net.Conn) {
+	s.mu.Lock()
+	delete(s.conns, conn)
+	s.mu.Unlock()
+}
+
+// shutdown stops accepting connections, closes any that are still open so their
+// handlers unblock, and waits for all in-flight handlers to return. After it
+// returns, no handler is touching the database, so the caller can safely close
+// it without racing an in-flight write.
+func (s *dbServer) shutdown() {
+	s.ln.Close()
+	s.mu.Lock()
+	s.closing = true
+	for conn := range s.conns {
+		conn.Close()
+	}
+	s.mu.Unlock()
+	s.wg.Wait()
 }
 
 func (s *dbServer) handle(conn net.Conn) {
 	defer conn.Close()
+	defer s.untrackConn(conn)
 	for {
 		op, payload, err := readFrame(conn)
 		if err != nil {

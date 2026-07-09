@@ -19,15 +19,12 @@ package fuzzer
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/rand"
 	"os"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -235,14 +232,6 @@ func storeTest(test *fuzzing.GeneralStateTest, hashed []byte, testName string) b
 		panic(fmt.Sprintf("Could not encode state test %q: %v", testName, err))
 	}
 	return false
-}
-
-func randTestName(data []byte) string {
-	var seedData [8]byte
-	copy(seedData[:], data)
-	seed := int64(binary.BigEndian.Uint64(seedData[:]))
-	rand := rand.New(rand.NewSource(time.Now().UnixNano() ^ seed))
-	return fmt.Sprintf("FuzzyVM-%v-%v", rand.Int31(), rand.Int31())
 }
 
 func hash(test *fuzzing.GeneralStateTest) []byte {

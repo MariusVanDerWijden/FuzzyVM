@@ -9,8 +9,11 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
+	"syscall"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/fuzzer"
@@ -129,20 +132,20 @@ func generate(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer pdb.Close()
 
 	// Listen on a Unix socket in a temp dir; the path goes to the workers.
 	sockDir, err := os.MkdirTemp("", "fuzzyvm-sock-")
 	if err != nil {
+		pdb.Close()
 		return err
 	}
 	defer os.RemoveAll(sockDir)
 	sockPath := filepath.Join(sockDir, "db.sock")
 	ln, err := net.Listen("unix", sockPath)
 	if err != nil {
+		pdb.Close()
 		return err
 	}
-	defer ln.Close()
 
 	srv := newServer(pdb, ln)
 	go srv.serve()
@@ -163,12 +166,38 @@ func generate(ctx *cli.Context) error {
 	cmd.Stderr = os.Stderr
 	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", sockEnvKey, sockPath))
 
+	// Ctrl-C is the normal way to stop an open-ended run. SIGINT reaches both
+	// this process and the `go test` child (same process group); we catch it
+	// here so the child exits cleanly and control returns to the shutdown
+	// sequence below, which flushes the database. Without this, the default
+	// SIGINT action would kill us before pdb.Close() runs and every unsynced
+	// (NoSync) write would be lost.
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
+	var interrupted atomic.Bool
+	go func() {
+		if _, ok := <-sigCh; ok {
+			interrupted.Store(true)
+		}
+	}()
+
 	fmt.Printf("Fuzzing into %v with %d workers\n", dbPath, procs)
 	err = cmd.Run()
 
-	// Stop accepting connections and report what landed.
-	ln.Close()
+	// Drain in-flight handlers, then flush and close the database. shutdown()
+	// closes the listener and waits for every connection handler to finish, so
+	// no PUT is still writing when we Close the db.
+	srv.shutdown()
+	if cerr := pdb.Close(); cerr != nil && err == nil {
+		err = cerr
+	}
 	fmt.Printf("Stored %d new codes (%d candidates received)\n", srv.stored.Load(), srv.received.Load())
+	if interrupted.Load() {
+		// A user-initiated Ctrl-C is a clean stop, not a failure. (A genuine
+		// fuzz-found crash exits without a signal, so its error still surfaces.)
+		return nil
+	}
 	return err
 }
 

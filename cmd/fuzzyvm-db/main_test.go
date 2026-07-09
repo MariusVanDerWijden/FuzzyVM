@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"sync"
 	"testing"
@@ -8,11 +9,12 @@ import (
 	"github.com/MariusVanDerWijden/FuzzyVM/generator/precompiles"
 )
 
-// The db is opened lazily inside the fuzz callback: with `go test -fuzz`, the
-// coordinator process also executes the FuzzEVM body, so opening the db there
-// would hold the pebble directory lock and starve the worker process. Only a
-// single worker can run (-parallel=1), as workers are separate processes and
-// would collide on the lock. The db is closed by process exit.
+// The db handle is created lazily inside the fuzz callback. Under `generate`,
+// the parent process owns the single pebble handle (pebble locks its directory
+// exclusively) and exposes it over a Unix socket, so each worker process
+// connects to that instead of opening pebble itself. Run directly via
+// `go test -fuzz` (no socket), the harness falls back to a private temporary
+// pebble database.
 var (
 	fuzzDB     db
 	fuzzDBOnce sync.Once
@@ -42,6 +44,12 @@ func FuzzEVM(f *testing.F) {
 			}
 		})
 		if err := run(fuzzDB, a); err != nil {
+			// A broken socket (e.g. the server shutting down) is an
+			// infrastructure failure, not a bug in this input. Skip it so it
+			// isn't recorded as a reproducible fuzz crash.
+			if errors.Is(err, errSocket) {
+				t.Skipf("socket unavailable: %v", err)
+			}
 			t.Fatal(err)
 		}
 	})

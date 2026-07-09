@@ -1,12 +1,19 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"sync"
 
 	"github.com/cockroachdb/pebble"
 )
+
+// errSocket wraps any transport-level failure talking to the server. The fuzz
+// worker treats it as an infrastructure problem (skip the input) rather than a
+// real run() failure, so a dropped connection during shutdown isn't misrecorded
+// as a reproducible fuzz crash.
+var errSocket = errors.New("socketDB transport error")
 
 // socketDB is a db implementation backed by the generate server over a Unix
 // socket. It lets the fuzz worker reuse run()/hasCode() unchanged: Get becomes a
@@ -33,11 +40,11 @@ func (s *socketDB) Get(key []byte) ([]byte, error) {
 	defer s.mu.Unlock()
 
 	if err := writeFrame(s.conn, opHas, key); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", errSocket, err)
 	}
 	resp, err := readByte(s.conn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", errSocket, err)
 	}
 	switch resp {
 	case respPresent:
@@ -45,7 +52,7 @@ func (s *socketDB) Get(key []byte) ([]byte, error) {
 	case respAbsent:
 		return nil, pebble.ErrNotFound
 	default:
-		return nil, fmt.Errorf("unexpected HAS response %q", resp)
+		return nil, fmt.Errorf("%w: unexpected HAS response %q", errSocket, resp)
 	}
 }
 
@@ -63,14 +70,14 @@ func (s *socketDB) putBlobs(blobs ...[]byte) error {
 	defer s.mu.Unlock()
 
 	if err := writeFrame(s.conn, opPut, encodeBlobs(blobs...)); err != nil {
-		return err
+		return fmt.Errorf("%w: %w", errSocket, err)
 	}
 	resp, err := readByte(s.conn)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", errSocket, err)
 	}
 	if resp != respAck {
-		return fmt.Errorf("unexpected PUT response %q", resp)
+		return fmt.Errorf("%w: unexpected PUT response %q", errSocket, resp)
 	}
 	return nil
 }
