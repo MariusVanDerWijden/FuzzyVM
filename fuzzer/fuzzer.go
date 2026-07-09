@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -110,10 +111,34 @@ func setupTrace(name string) *os.File {
 	return traceFile
 }
 
+// maxTraceSize caps the trace output buffered in memory during minimization.
+// Programs that produce larger traces (e.g. loops that run until out of gas)
+// are too expensive to minimize and are rejected with errTraceTooLarge.
+const maxTraceSize = 32 * 1024 * 1024
+
+var errTraceTooLarge = errors.New("trace too large to minimize")
+
+// cappedBuffer buffers writes up to maxTraceSize and discards the rest.
+type cappedBuffer struct {
+	buf      bytes.Buffer
+	overflow bool
+}
+
+func (c *cappedBuffer) Write(p []byte) (int, error) {
+	if c.overflow || c.buf.Len()+len(p) > maxTraceSize {
+		c.overflow = true
+		return len(p), nil
+	}
+	return c.buf.Write(p)
+}
+
 func MinimizeProgram(test *fuzzing.GstMaker) (*fuzzing.GstMaker, []byte, error) {
-	original := new(bytes.Buffer)
+	original := new(cappedBuffer)
 	if err := test.Fill(original); err != nil {
 		return nil, nil, err
+	}
+	if original.overflow {
+		return nil, nil, errTraceTooLarge
 	}
 	name := ""
 	gstPtr := test.ToGeneralStateTest(name)
@@ -126,7 +151,7 @@ func MinimizeProgram(test *fuzzing.GstMaker) (*fuzzing.GstMaker, []byte, error) 
 			addr = ad
 		}
 	}
-	orgs := original.Bytes()
+	orgs := original.buf.Bytes()
 	idx := strings.LastIndex(string(orgs), "{")
 	if idx <= 0 {
 		idx = 0
@@ -148,12 +173,17 @@ func MinimizeProgram(test *fuzzing.GstMaker) (*fuzzing.GstMaker, []byte, error) 
 		if err := json.Unmarshal(data, &gethStateTest); err != nil {
 			panic(err)
 		}
-		newOutput := new(bytes.Buffer)
+		newOutput := new(cappedBuffer)
 		cfg := vm.Config{}
 		cfg.Tracer = logger.NewJSONLogger(&logger.Config{}, newOutput)
 		subtest := gethStateTest.Subtests()[0]
 		gethStateTest.RunNoVerify(subtest, cfg, false, rawdb.HashScheme)
-		newB := newOutput.Bytes()
+		if newOutput.overflow {
+			// The prefix traces longer than the whole original program, so it
+			// cannot match.
+			return false
+		}
+		newB := newOutput.buf.Bytes()
 		newIdx := strings.LastIndex(string(newB), "{")
 		if newIdx <= 0 {
 			newIdx = 0

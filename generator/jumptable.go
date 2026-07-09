@@ -79,8 +79,12 @@ func (j *Jumptable) InsertJumps(bytecode []byte) []byte {
 				}
 			}
 			if !set {
-				// if no suitable destination found, set jumpdest to 0
-				bytecode = insertJumpdest(bytecode, pc, 0)
+				// If no suitable destination is found, poison the jump with an
+				// out-of-range destination so it always fails. Destination 0 is
+				// not safe here: if the program happens to start with a
+				// JUMPDEST, jumping to 0 forms an infinite loop that burns the
+				// full gas limit.
+				bytecode = insertJumpdest(bytecode, pc, ^uint64(0))
 			}
 		}
 	}
