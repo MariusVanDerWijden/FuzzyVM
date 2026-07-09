@@ -155,6 +155,10 @@ func generate(ctx *cli.Context) error {
 		"-run=^$",         // don't run unit tests, only fuzz
 		"-fuzz=^FuzzEVM$", // the harness that fills the db
 		fmt.Sprintf("-parallel=%d", procs),
+		// Raise the per-input hang deadline: some generated programs (heavy
+		// BLS/KZG precompile calls, then minimization) legitimately take a while,
+		// and the default would flag them as hangs.
+		"-timeout=30s",
 	}
 	if d := ctx.Duration("time"); d > 0 {
 		args = append(args, fmt.Sprintf("-fuzztime=%s", d))

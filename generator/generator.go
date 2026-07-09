@@ -44,6 +44,7 @@ func init() {
 	strats = append(strats, basicStrategies...)
 	strats = append(strats, callStrategies...)
 	strats = append(strats, jumpStrategies...)
+	strats = append(strats, stackStrategies...)
 	strategies = makeMap(strats)
 }
 
@@ -58,13 +59,15 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 // bounded per top-level generation rather than by a process-global counter.
 func generateProgram(f *filler.Filler, recursionLevel int) (*fuzzing.GstMaker, []byte) {
 	var (
-		labels []uint64
-		env    = Environment{
+		labels      []uint64
+		stackHeight int
+		env         = Environment{
 			p:              program.New(),
 			f:              f,
 			jumptable:      NewJumptable(uint64(minJumpDistance)),
 			recursionLevel: recursionLevel,
 			labels:         &labels,
+			stackHeight:    &stackHeight,
 		}
 		debug = false
 	)

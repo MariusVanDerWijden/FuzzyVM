@@ -40,6 +40,15 @@ type Environment struct {
 	// jumptable's placeholder-scanning heuristic. It is a pointer so the slice
 	// survives Environment being passed by value.
 	labels *[]uint64
+	// stackHeight is a conservative model of the number of items currently on
+	// the EVM stack. It is a pointer so it survives Environment being passed by
+	// value. Only the stack-aware strategies maintain it: they add to it for
+	// every operand they push and subtract an op's net stack effect. Other
+	// strategies' stack effects are not tracked, so the model can undercount but
+	// never (from its own actions) overcount — which is the safe direction,
+	// since undercounting just makes the stack-aware generator push a few
+	// redundant operands rather than emit an op that underflows.
+	stackHeight *int
 }
 
 // addLabel emits a JUMPDEST and records its PC as a reusable jump target.
