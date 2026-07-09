@@ -16,11 +16,17 @@
 
 package generator
 
-import "math/big"
+import (
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/core/vm"
+)
 
 var jumpStrategies = []Strategy{
 	new(jumpdestGenerator),
 	new(jumpGenerator),
+	new(labelJumpGenerator),
+	new(boundedLoopGenerator),
 }
 
 type jumpdestGenerator struct{}
@@ -34,8 +40,9 @@ func (*jumpdestGenerator) Execute(env Environment) {
 		// Set the jumpdest randomly
 		env.jumptable.Push(uint64(env.f.Uint16()), env.p.Label())
 	default:
-		// Set a jumpdest
-		env.jumptable.Push(env.p.Label(), env.p.Label())
+		// Emit a real JUMPDEST and cache its PC as a reusable jump target for
+		// the label-based control-flow strategies.
+		env.addLabel()
 	}
 }
 
@@ -75,4 +82,79 @@ func (*jumpGenerator) Importance() int {
 
 func (*jumpGenerator) String() string {
 	return "jumpGenerator"
+}
+
+// labelJumpGenerator jumps to one of the real JUMPDESTs emitted so far. Because
+// the destination is a cached, valid label, the jump actually lands (unlike the
+// jumptable heuristic, which frequently poisons the jump). A JUMP here is an
+// unconditional (usually backward) branch; a JUMPI is taken only some of the
+// time, exercising both edges of the branch.
+type labelJumpGenerator struct{}
+
+func (*labelJumpGenerator) Execute(env Environment) {
+	dest, ok := env.randomLabel()
+	if !ok {
+		// No labels yet; emit one so later jumps have somewhere to go.
+		env.addLabel()
+		return
+	}
+	if env.f.Bool() {
+		// Conditional branch: taken iff the condition is non-zero. Flip a coin
+		// so the corpus contains both taken and not-taken executions.
+		condition := big.NewInt(0)
+		if env.f.Bool() {
+			condition = big.NewInt(1)
+		}
+		env.p.JumpIf(dest, condition)
+	} else {
+		env.p.Jump(dest)
+	}
+}
+
+func (*labelJumpGenerator) Importance() int {
+	return 5
+}
+
+func (*labelJumpGenerator) String() string {
+	return "labelJumpGenerator"
+}
+
+// boundedLoopGenerator emits a counter-driven loop that is guaranteed to
+// terminate: it initialises a counter, and each iteration decrements it and
+// branches back to the loop head while it is non-zero. This stresses gas
+// metering and per-iteration state without the risk of an unbounded
+// (until-out-of-gas) loop that the raw jumptable can produce.
+type boundedLoopGenerator struct{}
+
+func (*boundedLoopGenerator) Execute(env Environment) {
+	// Keep the iteration count small so a loop nested inside other loops can't
+	// blow up execution time. 1..16 iterations.
+	iterations := int64(env.f.Byte()%16) + 1
+	// Push initial counter value.
+	env.p.Push(big.NewInt(iterations))
+	// Loop head.
+	head := env.addLabel()
+	// Body: a couple of cheap, side-effecting ops so the loop isn't empty.
+	env.p.Op(vm.GAS, vm.POP)
+	// counter = counter - 1 (counter is on top of stack).
+	env.p.Push(big.NewInt(1))
+	env.p.Op(vm.SWAP1, vm.SUB)
+	// Branch back to head while the counter is non-zero. DUP1 copies the
+	// counter to use as the JUMPI condition (JUMPI pops [dest, condition] with
+	// dest on top), leaving the original counter for the next iteration. We
+	// can't use program.JumpIf here: it pushes its own condition, whereas we
+	// need the condition to come from the stack.
+	env.p.Op(vm.DUP1)
+	env.p.Push(head)
+	env.p.Op(vm.JUMPI)
+	// Clean up the leftover zero counter.
+	env.p.Op(vm.POP)
+}
+
+func (*boundedLoopGenerator) Importance() int {
+	return 4
+}
+
+func (*boundedLoopGenerator) String() string {
+	return "boundedLoopGenerator"
 }

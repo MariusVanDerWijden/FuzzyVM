@@ -96,6 +96,27 @@ func TestBytes(t *testing.T) {
 	}
 }
 
+// TestByteSliceWrapPointer checks that after ByteSlice wraps past the end of
+// the data, the pointer resumes at the correct position rather than skipping
+// the bytes consumed before the wrap.
+func TestByteSliceWrapPointer(t *testing.T) {
+	// data len 10, start at 8, read 4: reads indices 8,9,0,1; next unread is 2.
+	f := NewFiller([]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
+	f.pointer = 8
+	got := f.ByteSlice(4)
+	want := []byte{8, 9, 0, 1}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("ByteSlice returned %v, want %v", got, want)
+	}
+	if f.pointer != 2 {
+		t.Fatalf("pointer = %d after wrap, want 2", f.pointer)
+	}
+	// The next single byte must be data[2] == 2, proving nothing was skipped.
+	if b := f.Byte(); b != 2 {
+		t.Fatalf("next Byte = %d, want 2 (bytes were skipped)", b)
+	}
+}
+
 func TestBytesVBytes(t *testing.T) {
 	fut := func(f *Filler, _ []byte) bool {
 		a := f.ByteSlice256()

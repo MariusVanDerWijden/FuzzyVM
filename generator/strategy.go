@@ -17,6 +17,7 @@
 package generator
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
@@ -28,6 +29,32 @@ type Environment struct {
 	f         *filler.Filler
 	p         *program.Program
 	jumptable *Jumptable
+	// recursionLevel is how deeply nested we are in createCallGenerator (which
+	// recursively generates sub-programs). It is per-generation, carried down
+	// through the nested GenerateProgram calls, so it resets for every
+	// top-level generation instead of leaking across a fuzz worker's lifetime.
+	recursionLevel int
+	// labels caches the PCs of real JUMPDESTs emitted so far in this program.
+	// Structured control-flow strategies (jump_strategies) jump to these known
+	// destinations, so JUMP/JUMPI always target a valid JUMPDEST instead of the
+	// jumptable's placeholder-scanning heuristic. It is a pointer so the slice
+	// survives Environment being passed by value.
+	labels *[]uint64
+}
+
+// addLabel emits a JUMPDEST and records its PC as a reusable jump target.
+func (env Environment) addLabel() uint64 {
+	_, pc := env.p.Jumpdest()
+	*env.labels = append(*env.labels, pc)
+	return pc
+}
+
+// randomLabel returns a cached JUMPDEST PC and true, or false if none exist.
+func (env Environment) randomLabel() (uint64, bool) {
+	if len(*env.labels) == 0 {
+		return 0, false
+	}
+	return (*env.labels)[int(env.f.Byte())%len(*env.labels)], true
 }
 
 type Strategy interface {
@@ -49,17 +76,30 @@ func Probability(strat Strategy) byte {
 	return max(byte(math.Round((float64(imp)/float64(100))*float64(255))), 1)
 }
 
+// makeMap builds the 256-entry strategy selection table. Each strategy claims a
+// number of slots proportional to its Probability; any slots left over are
+// filled with validOpcodeGenerator so every possible selection byte maps to a
+// strategy (generator.go relies on this: a nil entry panics).
 func makeMap(strats []Strategy) map[byte]Strategy {
 	m := make(map[byte]Strategy)
-	sum := byte(0)
+	sum := 0
 	for _, strat := range strats {
-		for i := byte(0); i < Probability(strat); i++ {
-			m[sum] = strat
+		prob := int(Probability(strat))
+		if sum+prob > 256 {
+			// The weighted slots would overflow the 256-entry table and start
+			// overwriting earlier strategies. Refuse loudly instead of silently
+			// corrupting selection — lower some Importance values or switch to a
+			// wider selection table.
+			panic(fmt.Sprintf("strategy probabilities exceed 256 (at %q, running total %d); reduce Importance values", strat.String(), sum+prob))
+		}
+		for i := 0; i < prob; i++ {
+			m[byte(sum)] = strat
 			sum++
 		}
 	}
-	for i := sum - 1; i < 255; i++ {
-		m[i+1] = new(validOpcodeGenerator)
+	// Fill any remaining slots [sum, 256) with the fallback generator.
+	for i := sum; i < 256; i++ {
+		m[byte(i)] = new(validOpcodeGenerator)
 	}
 	return m
 }

@@ -17,10 +17,28 @@
 package generator
 
 import (
+	"math"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/core/vm"
 )
+
+// memOffset turns a filler MemInt into a non-negative int usable as a memory
+// offset or length. MemInt occasionally returns values with the high bit set
+// (up to 2^256); a plain int(x.Uint64()) conversion would wrap to a negative
+// int on 64-bit platforms, which is never a valid offset. Clamp to a large but
+// safe positive bound instead — anything that big just runs out of gas.
+func memOffset(env Environment) int {
+	v := env.f.MemInt()
+	if !v.IsInt64() {
+		return math.MaxInt32
+	}
+	i := v.Int64()
+	if i < 0 || i > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	return int(i)
+}
 
 var basicStrategies = []Strategy{
 	new(opcodeGenerator),
@@ -59,11 +77,25 @@ func (*opcodeGenerator) String() string {
 	return "opcodeGenerator"
 }
 
+// opcodeDefined[op] is true iff op is a defined EVM opcode. Built once at
+// startup so the hot validOpcodeGenerator path is a single array lookup rather
+// than formatting the opcode and substring-scanning for "not defined" (which
+// also silently breaks if go-ethereum reworks OpCode.String()).
+var opcodeDefined = func() [256]bool {
+	var defined [256]bool
+	for i := 0; i < 256; i++ {
+		op := vm.OpCode(i)
+		// String() returns "opcode 0x.. not defined" for unassigned opcodes.
+		defined[i] = !strings.Contains(op.String(), "not defined")
+	}
+	return defined
+}()
+
 type validOpcodeGenerator struct{}
 
 func (*validOpcodeGenerator) Execute(env Environment) {
 	op := vm.OpCode(env.f.Byte())
-	if strings.Contains(op.String(), "not defined") {
+	if !opcodeDefined[op] {
 		// If the opcode is not defined, use JUMPDEST
 		// since JUMPDEST is a valid opcode
 		op = vm.JUMPDEST
@@ -84,9 +116,9 @@ type memStorageGenerator struct{}
 func (*memStorageGenerator) Execute(env Environment) {
 	// Copy a part of memory into storage
 	var (
-		memStart  = int(env.f.MemInt().Uint64())
+		memStart  = memOffset(env)
 		memSize   = int(env.f.Byte())
-		startSlot = int(env.f.MemInt().Uint64())
+		startSlot = memOffset(env)
 	)
 	// TODO MSTORE currently uses too much gas
 	env.p.MemToStorage(memStart, memSize, startSlot)
@@ -177,8 +209,8 @@ type returnGenerator struct{}
 func (*returnGenerator) Execute(env Environment) {
 	// Returns with offset, len
 	var (
-		offset = int(env.f.MemInt().Uint64())
-		len    = int(env.f.MemInt().Uint64())
+		offset = memOffset(env)
+		len    = memOffset(env)
 	)
 	env.p.Return(offset, len)
 }

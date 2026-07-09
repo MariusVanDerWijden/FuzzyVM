@@ -36,6 +36,15 @@ var (
 		new(bn256MulCaller),
 		new(bn256PairingCaller),
 		new(blake2fCaller),
+		new(kzgCaller),
+		new(blsG1AddCaller),
+		new(blsG2AddCaller),
+		new(blsG1MSMCaller),
+		new(blsG2MSMCaller),
+		new(blsMapG1Caller),
+		new(blsMapG2Caller),
+		new(blsPairingCaller),
+		new(p256Caller),
 	}
 )
 
@@ -78,14 +87,15 @@ func CallRandomizer(p *program.Program, f *filler.Filler, c CallObj) {
 	}
 }
 
-// CallPrecompile randomly calls one of the available precompiles.
-func CallPrecompile(p *program.Program, f *filler.Filler) {
-	// call a precompile
+// CallPrecompile randomly calls one of the available precompiles. It returns
+// any error from building the call so the caller can skip it: these errors come
+// from constructing the (possibly invalid) precompile input, which is a
+// generator-internal condition, not an EVM crash — panicking here would surface
+// as a false-positive discrepancy.
+func CallPrecompile(p *program.Program, f *filler.Filler) error {
 	var (
 		idx  = int(f.Byte()) % len(precompiles)
 		prec = precompiles[idx]
 	)
-	if err := prec.call(p, f); err != nil {
-		panic(err)
-	}
+	return prec.call(p, f)
 }
