@@ -78,7 +78,12 @@ func WarmupKZG() {
 // validKZGInput builds the 192-byte point-evaluation input:
 // versionedHash(32) || point(32) || claim(32) || commitment(48) || proof(48).
 func validKZGInput(f *filler.Filler) ([]byte, error) {
-	random := f.ByteSlice(131072)
+	// A blob is 128KB. Draw only a small seed from the shared filler cursor and
+	// expand it deterministically to fill the blob, rather than pulling 128KB
+	// through the cursor (which wraps thousands of times on a small input and,
+	// worse, desyncs every subsequent read in the generation).
+	seed := f.ByteSlice(64)
+	random := expandKZGSeed(seed, 131072)
 	blob := encodeKZGBlob(random)
 	commitment, err := kzg4844.BlobToCommitment(&blob)
 	if err != nil {
@@ -100,6 +105,20 @@ func validKZGInput(f *filler.Filler) ([]byte, error) {
 	copy(input[96:144], commitment[:])
 	copy(input[144:192], proof[:])
 	return input, nil
+}
+
+// expandKZGSeed deterministically expands a short seed to n bytes by chaining
+// SHA-256 (a counter-mode PRG). This gives a well-mixed, non-repetitive blob
+// from a bounded amount of filler data, so mutating a filler byte still changes
+// the blob but doesn't cost 128KB of cursor advance.
+func expandKZGSeed(seed []byte, n int) []byte {
+	out := make([]byte, 0, n)
+	block := sha256.Sum256(seed)
+	for len(out) < n {
+		out = append(out, block[:]...)
+		block = sha256.Sum256(block[:])
+	}
+	return out[:n]
 }
 
 // encodeKZGBlob packs data into a single blob, leaving the high byte of each

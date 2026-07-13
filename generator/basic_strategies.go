@@ -18,6 +18,7 @@ package generator
 
 import (
 	"math"
+	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -61,12 +62,7 @@ type opcodeGenerator struct{}
 func (*opcodeGenerator) Execute(env Environment) {
 	// Just add a single opcode
 	op := vm.OpCode(env.f.Byte())
-	// Nethermind currently uses a different blockhash provider in the statetests,
-	// so ignore the blockhash operator to reduce false positives.
-	// see: https://gist.github.com/MariusVanDerWijden/97fe9eb1aac074f7ccf6aef169aaadaa
-	if op != vm.BLOCKHASH {
-		env.p.Op(op)
-	}
+	env.p.Op(op)
 }
 
 func (*opcodeGenerator) Importance() int {
@@ -154,12 +150,22 @@ func (*mstoreGenerator) String() string {
 type sstoreGenerator struct{}
 
 func (*sstoreGenerator) Execute(env Environment) {
-	// Store data in storage
-	var (
-		data = make([]byte, env.f.Byte()%32)
-		slot = uint32(env.f.MemInt().Uint64())
-	)
-	env.p.Sstore(slot, data)
+	// Store a value in storage. Sometimes explicitly zero (to exercise the
+	// clear/refund path), otherwise a boundary or random word so the slot
+	// actually becomes dirty. Keeping the slot clustered in the low range (as
+	// MemInt does) means a later SLOAD/SSTORE frequently hits the same warm slot.
+	slot := uint32(env.f.MemInt().Uint64())
+	env.p.Sstore(slot, storeValue(env))
+}
+
+// storeValue returns a value to write with SSTORE/TSTORE. ~1/8 of the time it is
+// zero (so the clear/refund branches of the SSTORE gas machine are reachable);
+// otherwise it is a boundary or random word so the slot actually becomes dirty.
+func storeValue(env Environment) *big.Int {
+	if env.f.Byte() < 32 {
+		return big.NewInt(0)
+	}
+	return interestingOperand(env)
 }
 
 func (*sstoreGenerator) Importance() int {
@@ -173,12 +179,9 @@ func (*sstoreGenerator) String() string {
 type tstoreGenerator struct{}
 
 func (*tstoreGenerator) Execute(env Environment) {
-	// Store data in storage
-	var (
-		data = make([]byte, env.f.Byte()%32)
-		slot = uint32(env.f.MemInt().Uint64())
-	)
-	env.p.Tstore(slot, data)
+	// Store a value in transient storage so a following TLOAD reads it back.
+	slot := uint32(env.f.MemInt().Uint64())
+	env.p.Tstore(slot, storeValue(env))
 }
 
 func (*tstoreGenerator) Importance() int {
@@ -226,8 +229,10 @@ func (*returnGenerator) String() string {
 type pushGenerator struct{}
 
 func (*pushGenerator) Execute(env Environment) {
-	b := make([]byte, env.f.Byte()%32)
-	env.p.Push(b)
+	// Push a boundary or random word rather than the constant zero the old
+	// make([]byte, n%32) idiom produced: a bare 0 on the stack rarely changes
+	// which branch a following opcode takes, so it was mostly wasted weight.
+	env.p.Push(interestingOperand(env))
 }
 
 func (*pushGenerator) Importance() int {

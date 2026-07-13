@@ -17,28 +17,31 @@
 package generator
 
 import (
-	"fmt"
-	"math"
+	"sort"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/core/vm/program"
 )
 
+// Environment is passed to strategies by value. Note the deliberate split:
+// pointer fields (p, labels, stackHeight) let a strategy mutate shared state
+// that outlives the call, whereas value fields (recursionLevel) are per-call
+// snapshots. A strategy that tried to persist a change to a value field
+// (e.g. env.recursionLevel++) would silently not propagate — recursion depth is
+// instead threaded explicitly through generateCode(f, level+1).
 type Environment struct {
-	f         *filler.Filler
-	p         *program.Program
-	jumptable *Jumptable
+	f *filler.Filler
+	p *program.Program
 	// recursionLevel is how deeply nested we are in createCallGenerator (which
 	// recursively generates sub-programs). It is per-generation, carried down
 	// through the nested GenerateProgram calls, so it resets for every
 	// top-level generation instead of leaking across a fuzz worker's lifetime.
 	recursionLevel int
 	// labels caches the PCs of real JUMPDESTs emitted so far in this program.
-	// Structured control-flow strategies (jump_strategies) jump to these known
-	// destinations, so JUMP/JUMPI always target a valid JUMPDEST instead of the
-	// jumptable's placeholder-scanning heuristic. It is a pointer so the slice
-	// survives Environment being passed by value.
+	// The control-flow strategies (jump_strategies) jump only to these known
+	// destinations, so JUMP/JUMPI always target a valid JUMPDEST. It is a pointer
+	// so the slice survives Environment being passed by value.
 	labels *[]uint64
 	// stackHeight is a conservative model of the number of items currently on
 	// the EVM stack. It is a pointer so it survives Environment being passed by
@@ -78,39 +81,60 @@ type Strategy interface {
 	String() string
 }
 
-// Probability returns the probability of this strategy,
-// given the sum of all strategies on scale 1-255.
-func Probability(strat Strategy) byte {
-	imp := strat.Importance()
-	return max(byte(math.Round((float64(imp)/float64(100))*float64(255))), 1)
+// fallbackWeight is the weight given to the validOpcodeGenerator fallback. The
+// old 256-slot table filled whatever slots the weighted strategies left over
+// (~17/256) with this generator; we keep an equivalent share explicitly so raw
+// random-opcode emission stays part of the mix without depending on the table
+// size.
+const fallbackWeight = 17
+
+// selector chooses a strategy with probability proportional to its Importance.
+// It replaces the old fixed 256-entry map[byte]Strategy, which capped the total
+// weight at 256 and panicked once the strategies' importances summed past it.
+// Instead it keeps a cumulative-weight table and binary-searches a value drawn
+// from the filler, so any number of strategies (and any importances) fit.
+type selector struct {
+	strats []Strategy
+	// cum[i] is the running sum of weights up to and including strats[i]; the
+	// last element is the total weight.
+	cum   []int
+	total int
 }
 
-// makeMap builds the 256-entry strategy selection table. Each strategy claims a
-// number of slots proportional to its Probability; any slots left over are
-// filled with validOpcodeGenerator so every possible selection byte maps to a
-// strategy (generator.go relies on this: a nil entry panics).
-func makeMap(strats []Strategy) map[byte]Strategy {
-	m := make(map[byte]Strategy)
-	sum := 0
-	for _, strat := range strats {
-		prob := int(Probability(strat))
-		if sum+prob > 256 {
-			// The weighted slots would overflow the 256-entry table and start
-			// overwriting earlier strategies. Refuse loudly instead of silently
-			// corrupting selection — lower some Importance values or switch to a
-			// wider selection table.
-			panic(fmt.Sprintf("strategy probabilities exceed 256 (at %q, running total %d); reduce Importance values", strat.String(), sum+prob))
+// newSelector builds the weighted selector. Weights are the raw Importance
+// values; a validOpcodeGenerator fallback is appended so every selection lands
+// on a real strategy (generator relies on Select never returning nil).
+func newSelector(strats []Strategy) *selector {
+	all := make([]Strategy, 0, len(strats)+1)
+	all = append(all, strats...)
+	all = append(all, new(validOpcodeGenerator))
+
+	s := &selector{strats: all}
+	s.cum = make([]int, len(all))
+	for i, strat := range all {
+		w := strat.Importance()
+		if _, ok := strat.(*validOpcodeGenerator); ok {
+			w = fallbackWeight
 		}
-		for i := 0; i < prob; i++ {
-			m[byte(sum)] = strat
-			sum++
+		if w < 1 {
+			w = 1
 		}
+		s.total += w
+		s.cum[i] = s.total
 	}
-	// Fill any remaining slots [sum, 256) with the fallback generator.
-	for i := sum; i < 256; i++ {
-		m[byte(i)] = new(validOpcodeGenerator)
+	if s.total <= 0 {
+		panic("selector total weight must be positive")
 	}
-	return m
+	return s
+}
+
+// Select draws a strategy from the filler. It consumes two bytes so the weighted
+// space can be larger than 256 (the old byte-indexed table could not).
+func (s *selector) Select(f *filler.Filler) Strategy {
+	r := int(f.Uint16()) % s.total
+	// Binary search for the first cumulative weight strictly greater than r.
+	i := sort.Search(len(s.cum), func(i int) bool { return s.cum[i] > r })
+	return s.strats[i]
 }
 
 func (env Environment) CreateAndCall(code []byte, isCreate2 bool, callOp vm.OpCode) {

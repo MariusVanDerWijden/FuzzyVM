@@ -15,10 +15,9 @@ import (
 func TestBoundedLoopExecutes(t *testing.T) {
 	labels := []uint64{}
 	env := Environment{
-		p:         program.New(),
-		f:         filler.NewFiller([]byte{5, 7, 3, 9, 200, 1, 2, 3, 4, 8}),
-		jumptable: NewJumptable(10),
-		labels:    &labels,
+		p:      program.New(),
+		f:      filler.NewFiller([]byte{5, 7, 3, 9, 200, 1, 2, 3, 4, 8}),
+		labels: &labels,
 	}
 	var g boundedLoopGenerator
 	for i := 0; i < 3; i++ {
@@ -29,7 +28,7 @@ func TestBoundedLoopExecutes(t *testing.T) {
 	f := filler.NewFiller([]byte("seed-for-gstmaker-padding-bytes-to-avoid-wrap"))
 	gst := CreateGstMaker(f, code)
 	var trace bytes.Buffer
-	if err := gst.Fill(&trace); err != nil {
+	if err := gst.Fill(&trace, 0); err != nil {
 		t.Fatalf("Fill failed: %v", err)
 	}
 	// A runaway loop produces an enormous trace; three bounded loops of <=16

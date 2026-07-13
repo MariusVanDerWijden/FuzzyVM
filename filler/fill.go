@@ -98,8 +98,9 @@ func (f *Filler) BigInt256() *big.Int {
 }
 
 // GasInt returns a new big int to be used as a gas value.
-// With probability 252/255 it's in [0, 20.000.000].
-// With probability 1/255 each it's in [0, 2^32], [0, 2^64] or [0, 2^256].
+// With probability 253/256 it's in [0, 20.000.000] (byte values 0..252).
+// With probability 1/256 each it's in [0, 2^32], [0, 2^64] or [0, 2^256]
+// (byte values 253, 254, 255).
 func (f *Filler) GasInt() *big.Int {
 	b := f.Byte()
 	if b == 253 {
@@ -114,10 +115,10 @@ func (f *Filler) GasInt() *big.Int {
 }
 
 // MemInt returns a new big int to be used as a memory or offset value.
-// With probability 252/255 it's in [0, 255].
-// With probability 1/255 it's in [0, 2^32].
-// With probability 1/255 it's in [0, 2^64].
-// With probability 1/255 it's in [0, 2^256].
+// With probability 253/256 it's in [0, 255] (byte values 0..252).
+// With probability 1/256 it's in [0, 2^32] (byte value 253).
+// With probability 1/256 it's in [0, 2^64] (byte value 254).
+// With probability 1/256 it's in [0, 2^256] (byte value 255).
 func (f *Filler) MemInt() *big.Int {
 	b := f.Byte()
 	if b == 253 {
@@ -134,7 +135,7 @@ func (f *Filler) MemInt() *big.Int {
 func (f *Filler) ByteSlice(items int) []byte {
 	// TODO (MariusVanDerWijden) this can be done way more efficiently
 	b := make([]byte, items)
-	if f.pointer+items < len(f.data) {
+	if f.pointer+items <= len(f.data) {
 		copy(b, f.data[f.pointer:])
 		f.incPointer(items)
 	} else {

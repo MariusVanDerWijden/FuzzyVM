@@ -17,8 +17,6 @@
 package generator
 
 import (
-	"math/big"
-
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator/precompiles"
 	"github.com/ethereum/go-ethereum/common"
@@ -66,7 +64,7 @@ func (*createCallGenerator) Execute(env Environment) {
 		seedLen   = env.f.Uint16()
 		seed      = env.f.ByteSlice(int(seedLen))
 		newFiller = filler.NewFiller(seed)
-		_, code   = generateProgram(newFiller, env.recursionLevel+1)
+		code      = generateCode(newFiller, env.recursionLevel+1)
 		isCreate2 = env.f.Bool()
 		callOp    = vm.OpCode(env.f.Byte())
 	)
@@ -83,12 +81,28 @@ func (*createCallGenerator) String() string {
 
 type randomCallGenerator struct{}
 
+// precompileAddrs are the addresses to bias random calls toward. Covers the
+// low-numbered precompiles (0x01..0x11) and P256VERIFY at 0x0100, which the old
+// Mod(_, 20) range (0x00..0x13) could not reach — and which also included the
+// non-precompile addresses 0x00, 0x12, 0x13.
+var precompileAddrs = []common.Address{
+	common.HexToAddress("0x01"), common.HexToAddress("0x02"),
+	common.HexToAddress("0x03"), common.HexToAddress("0x04"),
+	common.HexToAddress("0x05"), common.HexToAddress("0x06"),
+	common.HexToAddress("0x07"), common.HexToAddress("0x08"),
+	common.HexToAddress("0x09"), common.HexToAddress("0x0a"),
+	common.HexToAddress("0x0b"), common.HexToAddress("0x0c"),
+	common.HexToAddress("0x0d"), common.HexToAddress("0x0e"),
+	common.HexToAddress("0x0f"), common.HexToAddress("0x10"),
+	common.HexToAddress("0x11"), common.HexToAddress("0x0100"),
+}
+
 func (*randomCallGenerator) Execute(env Environment) {
 	// Call a random address
 	var addr common.Address
 	if env.f.Bool() {
 		// call a precompile
-		addr = common.BigToAddress(new(big.Int).Mod(env.f.BigInt16(), big.NewInt(20)))
+		addr = precompileAddrs[int(env.f.Byte())%len(precompileAddrs)]
 	} else {
 		addr = common.BytesToAddress(env.f.ByteSlice(20))
 	}

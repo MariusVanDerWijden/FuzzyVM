@@ -71,7 +71,7 @@ func (*blsG2AddCaller) call(p *program.Program, f *filler.Filler) error {
 type blsG1MSMCaller struct{}
 
 func (*blsG1MSMCaller) call(p *program.Program, f *filler.Filler) error {
-	rounds := int(f.Byte())%8 + 1
+	rounds := blsRounds(f, 8)
 	for i := 0; i < rounds; i++ {
 		p.Mstore(encodeBLSG1(randG1(f)), uint32(i*blsG1MSMItem))
 		p.Mstore(scalar32(f), uint32(i*blsG1MSMItem+blsG1Size))
@@ -83,7 +83,7 @@ func (*blsG1MSMCaller) call(p *program.Program, f *filler.Filler) error {
 type blsG2MSMCaller struct{}
 
 func (*blsG2MSMCaller) call(p *program.Program, f *filler.Filler) error {
-	rounds := int(f.Byte())%8 + 1
+	rounds := blsRounds(f, 8)
 	for i := 0; i < rounds; i++ {
 		p.Mstore(encodeBLSG2(randG2(f)), uint32(i*blsG2MSMItem))
 		p.Mstore(scalar32(f), uint32(i*blsG2MSMItem+blsG2Size))
@@ -114,7 +114,7 @@ func (*blsMapG2Caller) call(p *program.Program, f *filler.Filler) error {
 type blsPairingCaller struct{}
 
 func (*blsPairingCaller) call(p *program.Program, f *filler.Filler) error {
-	g1s, g2s := blsPairing(int(f.Byte())%4+1, f)
+	g1s, g2s := blsPairing(blsRounds(f, 4), f)
 	offset := uint32(0)
 	for i := range g1s {
 		p.Mstore(encodeBLSG1(g1s[i]), offset)
@@ -127,6 +127,18 @@ func (*blsPairingCaller) call(p *program.Program, f *filler.Filler) error {
 }
 
 // --- helpers ---
+
+// blsRounds picks how many (expensive) elliptic-curve rounds an MSM/pairing
+// builder does. Each round is a full ScalarMultiplication, the dominant cost in
+// generation, so bias hard toward a single round and only occasionally (~1/8)
+// draw a larger count up to maxRounds. This keeps the heavy builders from
+// halving generation throughput while still exercising multi-element inputs.
+func blsRounds(f *filler.Filler, maxRounds int) int {
+	if f.Byte() < 32 {
+		return int(f.Byte())%maxRounds + 1
+	}
+	return 1
+}
 
 // callBLS issues the STATICCALL-style precompile call. All BLS precompiles are
 // pure, so a value transfer is meaningless; CallRandomizer may still turn it

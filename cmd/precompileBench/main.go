@@ -205,7 +205,7 @@ func makeCallerTest() {
 	f := filler.NewFiller([]byte("\x5a\x5a\x5a\x5a\x5a\x5a\x5a"))
 	testMaker := generator.CreateGstMaker(f, code)
 	start := time.Now()
-	if err := testMaker.Fill(nil); err != nil {
+	if err := testMaker.Fill(nil, 0); err != nil {
 		panic(err)
 	}
 	for _, account := range accounts {
@@ -223,7 +223,7 @@ func timeGeneration(code []byte) time.Duration {
 	f := filler.NewFiller([]byte("\x5a\x5a\x5a\x5a\x5a\x5a\x5a"))
 	testMaker := generator.CreateGstMaker(f, code)
 	start := time.Now()
-	if err := testMaker.Fill(nil); err != nil {
+	if err := testMaker.Fill(nil, 0); err != nil {
 		panic(err)
 	}
 	return time.Since(start)
@@ -232,7 +232,7 @@ func timeGeneration(code []byte) time.Duration {
 func writeOutTest(code []byte, iteration int) {
 	f := filler.NewFiller([]byte("\x5a\x5a\x5a\x5a\x5a\x5a\x5a"))
 	testMaker := generator.CreateGstMaker(f, code)
-	if err := testMaker.Fill(nil); err != nil {
+	if err := testMaker.Fill(nil, 0); err != nil {
 		panic(err)
 	}
 	storeTest(testMaker.ToGeneralStateTest("test"), fmt.Sprintf("statetest-%d.json", iteration))

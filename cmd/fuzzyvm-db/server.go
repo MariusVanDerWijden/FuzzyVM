@@ -129,6 +129,13 @@ func (s *dbServer) has(hash []byte) (bool, error) {
 }
 
 // put stores each blob that isn't already present, atomically per PUT.
+//
+// The stored counter can slightly over-count under concurrency: two connections
+// PUTing the same new blob may both pass the Get check before either writes, so
+// both increment stored. Pebble dedups on the key, so this is a stats-only
+// imprecision, never data corruption. Serializing put would remove it at the
+// cost of throughput on the hot path, which isn't worth it for a progress
+// counter.
 func (s *dbServer) put(payload []byte) error {
 	blobs, err := decodeBlobs(payload)
 	if err != nil {

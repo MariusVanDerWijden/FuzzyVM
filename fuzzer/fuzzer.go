@@ -72,25 +72,43 @@ func Fuzz(data []byte) int {
 	}
 	f := filler.NewFiller(data)
 	testMaker, _ := generator.GenerateProgram(f)
-	// minimize test
+	// Minimize the test. MinimizeProgram runs a full Fill internally, so it is
+	// also our execution check: if it succeeds, the test is fillable.
 	minimized, _, err := MinimizeProgram(testMaker)
-	if err == nil {
+	switch {
+	case err == nil:
 		testMaker = minimized
+	case errors.Is(err, ErrTraceTooLarge):
+		// A loop-until-OOG program: too expensive to minimize, but still a valid
+		// (unminimized) test worth keeping. Fall through with the original.
+	default:
+		// The program can't be filled/executed (e.g. a generated transaction
+		// whose intrinsic gas exceeds its gas limit). That's a generator-internal
+		// condition, not a client discrepancy — skip it rather than crash the
+		// campaign the way an unconditional panic would.
+		return 0
 	}
 	hashed := hash(testMaker.ToGeneralStateTest("hashName"))
 	finalName := fmt.Sprintf("FuzzyVM-%v", common.Bytes2Hex(hashed))
-	// Execute the test and write out the resulting trace
-	var traceFile *os.File
+	// Optionally re-run the test to write out its trace. Any error here is the
+	// same recoverable "not fillable" condition as above, so skip rather than
+	// panic.
 	if shouldTrace {
-		traceFile = setupTrace(finalName)
+		traceFile := setupTrace(finalName)
 		defer traceFile.Close()
-	}
-	if err := testMaker.Fill(traceFile); err != nil {
-		panic(err)
+		if err := testMaker.Fill(traceFile, maxTraceSize); err != nil {
+			return 0
+		}
 	}
 	// Save the test
 	test := testMaker.ToGeneralStateTest(finalName)
-	if storeTest(test, hashed, finalName) {
+	dup, err := storeTest(test, hashed, finalName)
+	if err != nil {
+		// A filesystem problem is not a reason to crash the campaign.
+		fmt.Printf("skipping test that could not be stored: %v\n", err)
+		return 0
+	}
+	if dup {
 		return 0
 	}
 	if f.UsedUp() {
@@ -141,7 +159,7 @@ func (c *cappedBuffer) Write(p []byte) (int, error) {
 
 func MinimizeProgram(test *fuzzing.GstMaker) (*fuzzing.GstMaker, []byte, error) {
 	original := new(cappedBuffer)
-	if err := test.Fill(original); err != nil {
+	if err := test.Fill(original, maxTraceSize); err != nil {
 		return nil, nil, err
 	}
 	if original.overflow {
@@ -182,7 +200,7 @@ func MinimizeProgram(test *fuzzing.GstMaker) (*fuzzing.GstMaker, []byte, error) 
 		}
 		newOutput := new(cappedBuffer)
 		cfg := vm.Config{}
-		cfg.Tracer = logger.NewJSONLogger(&logger.Config{}, newOutput)
+		cfg.Tracer = logger.NewJSONLogger(&logger.Config{Limit: maxTraceSize}, newOutput)
 		subtest := gethStateTest.Subtests()[0]
 		gethStateTest.RunNoVerify(subtest, cfg, false, rawdb.HashScheme)
 		if newOutput.overflow {
@@ -210,28 +228,31 @@ func MinimizeProgram(test *fuzzing.GstMaker) (*fuzzing.GstMaker, []byte, error) 
 	return test, code[0:foundLength], nil
 }
 
-// storeTest saves a testcase to disk
-// returns true if a duplicate test was found
-func storeTest(test *fuzzing.GeneralStateTest, hashed []byte, testName string) bool {
+// storeTest saves a testcase to disk. It returns (duplicate, err): duplicate is
+// true if the test was already present. A filesystem error (disk full,
+// permissions, …) is returned rather than panicked, so a transient problem
+// mid-campaign is skipped and logged instead of crashing the fuzzer (and being
+// misreported by the harness as a discrepancy).
+func storeTest(test *fuzzing.GeneralStateTest, hashed []byte, testName string) (bool, error) {
 	path := fmt.Sprintf("%v/%02x/%v.json", outputDir, hashed[0], testName)
 	// check if the test is already on disk
 	if _, err := os.Stat(path); err == nil {
 		fmt.Println("Duplicate test found")
-		return true
+		return true, nil
 	} else if !os.IsNotExist(err) {
-		panic(err)
+		return false, err
 	}
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0755)
 	if err != nil {
-		panic(fmt.Sprintf("Could not open test file %q: %v", testName, err))
+		return false, fmt.Errorf("could not open test file %q: %w", testName, err)
 	}
 	defer f.Close()
 	// Write to file
 	encoder := json.NewEncoder(f)
 	if err = encoder.Encode(test); err != nil {
-		panic(fmt.Sprintf("Could not encode state test %q: %v", testName, err))
+		return false, fmt.Errorf("could not encode state test %q: %w", testName, err)
 	}
-	return false
+	return false, nil
 }
 
 func hash(test *fuzzing.GeneralStateTest) []byte {

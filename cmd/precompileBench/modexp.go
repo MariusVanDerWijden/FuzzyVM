@@ -28,7 +28,7 @@ func createModexpStateTest() {
 	code := createModTestcase(base, exp, mod)
 	f := filler.NewFiller([]byte("\x5a\x5a\x5a\x5a\x5a\x5a\x5a"))
 	testMaker := generator.CreateGstMaker(f, code)
-	if err := testMaker.Fill(nil); err != nil {
+	if err := testMaker.Fill(nil, 0); err != nil {
 		panic(err)
 	}
 	// Save the test

@@ -32,18 +32,9 @@ var jumpStrategies = []Strategy{
 type jumpdestGenerator struct{}
 
 func (*jumpdestGenerator) Execute(env Environment) {
-	switch env.f.Byte() % 10 {
-	case 0:
-		// Set a jumpdest label
-		env.jumptable.Push(env.p.Label(), env.p.Label())
-	case 1:
-		// Set the jumpdest randomly
-		env.jumptable.Push(uint64(env.f.Uint16()), env.p.Label())
-	default:
-		// Emit a real JUMPDEST and cache its PC as a reusable jump target for
-		// the label-based control-flow strategies.
-		env.addLabel()
-	}
+	// Emit a real JUMPDEST and cache its PC as a reusable jump target for the
+	// label-based control-flow strategies.
+	env.addLabel()
 }
 
 func (*jumpdestGenerator) Importance() int {
@@ -54,25 +45,32 @@ func (*jumpdestGenerator) String() string {
 	return "jumpdestGenerator"
 }
 
+// jumpGenerator emits a JUMP or JUMPI to one of the real JUMPDESTs emitted so
+// far. Like labelJumpGenerator it targets a cached, valid label so the jump
+// actually lands; unlike it, the JUMPI condition is drawn from the filler
+// (BigInt32) rather than a fixed 0/1, so it exercises a wider set of
+// condition values. This replaces the old jumptable placeholder mechanism,
+// which wrote a 0xFF...FF sentinel and post-scanned the bytecode to patch it,
+// producing mostly-invalid jumps.
 type jumpGenerator struct{}
 
 func (*jumpGenerator) Execute(env Environment) {
+	dest, ok := env.randomLabel()
+	if !ok {
+		// No labels yet; emit one so later jumps have somewhere to go.
+		env.addLabel()
+		return
+	}
 	if env.f.Bool() {
-		// Jump to a label
-		jumpdest := env.jumptable.Pop(env.p.Label())
-		env.p.Jump(jumpdest)
+		// Unconditional jump to a valid destination.
+		env.p.Jump(dest)
 	} else {
-		// Jumpi to a label
-		var (
-			jumpdest   = env.jumptable.Pop(env.p.Label())
-			shouldJump = env.f.Bool()
-			condition  = big.NewInt(0)
-		)
-		if shouldJump {
+		// Conditional jump: with a fuzzed condition (zero => not taken).
+		condition := big.NewInt(0)
+		if env.f.Bool() {
 			condition = env.f.BigInt32()
 		}
-		// jumps if condition != 0
-		env.p.JumpIf(jumpdest, condition)
+		env.p.JumpIf(dest, condition)
 	}
 }
 

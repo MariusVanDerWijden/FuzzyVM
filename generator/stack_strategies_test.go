@@ -14,7 +14,6 @@ func newStackEnv(seed []byte) (Environment, *[]uint64, *int) {
 	return Environment{
 		p:           program.New(),
 		f:           filler.NewFiller(seed),
-		jumptable:   NewJumptable(10),
 		labels:      &labels,
 		stackHeight: &h,
 	}, &labels, &h
@@ -54,7 +53,7 @@ func TestArithEdgeExecutes(t *testing.T) {
 	f := filler.NewFiller([]byte("padding-seed-for-gstmaker-transaction-fields"))
 	gst := CreateGstMaker(f, code)
 	var trace traceCounter
-	if err := gst.Fill(&trace); err != nil {
+	if err := gst.Fill(&trace, 0); err != nil {
 		t.Fatalf("Fill failed: %v", err)
 	}
 	// Each edge case is several ops; a program of 9 that instantly reverted

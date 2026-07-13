@@ -13,10 +13,9 @@ import (
 // JUMPDESTs.
 func TestBoundedLoopTerminates(t *testing.T) {
 	env := Environment{
-		p:         program.New(),
-		f:         filler.NewFiller([]byte{5, 7, 3, 9, 200, 1, 2, 3, 4}),
-		jumptable: NewJumptable(10),
-		labels:    new([]uint64),
+		p:      program.New(),
+		f:      filler.NewFiller([]byte{5, 7, 3, 9, 200, 1, 2, 3, 4}),
+		labels: new([]uint64),
 	}
 	var g boundedLoopGenerator
 	for i := 0; i < 4; i++ {
@@ -39,10 +38,9 @@ func TestBoundedLoopTerminates(t *testing.T) {
 func TestLabelJumpTargetsAreValid(t *testing.T) {
 	labels := []uint64{}
 	env := Environment{
-		p:         program.New(),
-		f:         filler.NewFiller([]byte{0xff, 0x01, 0x80, 0x00, 0x40, 0x81}),
-		jumptable: NewJumptable(10),
-		labels:    &labels,
+		p:      program.New(),
+		f:      filler.NewFiller([]byte{0xff, 0x01, 0x80, 0x00, 0x40, 0x81}),
+		labels: &labels,
 	}
 	// Seed one label first.
 	env.addLabel()

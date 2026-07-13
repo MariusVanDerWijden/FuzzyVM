@@ -34,10 +34,9 @@ var (
 	sender            = common.HexToAddress("a94f5374fce5edbc8e2a8697c15331677e6ebf0b")
 	sk                = hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
 	maxRecursionLevel = 10
-	minJumpDistance   = 10
 )
 
-var strategies = map[byte]Strategy{}
+var strategies *selector
 
 func init() {
 	strats := []Strategy{}
@@ -45,26 +44,29 @@ func init() {
 	strats = append(strats, callStrategies...)
 	strats = append(strats, jumpStrategies...)
 	strats = append(strats, stackStrategies...)
-	strategies = makeMap(strats)
+	strats = append(strats, coverageStrategies...)
+	strategies = newSelector(strats)
 }
 
 // GenerateProgram creates a new evm program and returns
 // a gstMaker based on it as well as its program code.
 func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
-	return generateProgram(f, 0)
+	code := generateCode(f, 0)
+	return CreateGstMaker(f, code), code
 }
 
-// generateProgram is the recursive core of GenerateProgram. recursionLevel is
-// carried down through nested createCallGenerator invocations so the depth is
-// bounded per top-level generation rather than by a process-global counter.
-func generateProgram(f *filler.Filler, recursionLevel int) (*fuzzing.GstMaker, []byte) {
+// generateCode is the recursive core of GenerateProgram: it builds just the
+// bytecode. recursionLevel is carried down through nested createCallGenerator
+// invocations so the depth is bounded per top-level generation rather than by a
+// process-global counter. Nested generations only need the code, so they call
+// this directly and skip the (throwaway) CreateGstMaker state-test construction.
+func generateCode(f *filler.Filler, recursionLevel int) []byte {
 	var (
 		labels      []uint64
 		stackHeight int
 		env         = Environment{
 			p:              program.New(),
 			f:              f,
-			jumptable:      NewJumptable(uint64(minJumpDistance)),
 			recursionLevel: recursionLevel,
 			labels:         &labels,
 			stackHeight:    &stackHeight,
@@ -75,14 +77,10 @@ func generateProgram(f *filler.Filler, recursionLevel int) (*fuzzing.GstMaker, [
 	// Run for counter rounds
 	counter := f.Byte()
 	for range counter {
-		// Select one of the strategies
-		rnd := f.Byte()
-		strategy := strategies[rnd]
-		if strategy == nil {
-			panic(fmt.Sprintf("strategy %v is nil", rnd))
-		}
+		// Select one of the strategies (weighted by Importance).
+		strategy := strategies.Select(f)
 		if debug {
-			fmt.Println(rnd, strategy.String())
+			fmt.Println(strategy.String())
 		}
 		// Execute the strategy
 		strategy.Execute(env)
@@ -90,11 +88,11 @@ func generateProgram(f *filler.Filler, recursionLevel int) (*fuzzing.GstMaker, [
 			break
 		}
 	}
-	code := env.jumptable.InsertJumps(env.p.Bytes())
+	code := env.p.Bytes()
 	if debug {
 		fmt.Printf("length: %v \n%x\n", len(code), code)
 	}
-	return CreateGstMaker(f, code), code
+	return code
 }
 
 func CreateGstMaker(fill *filler.Filler, code []byte) *fuzzing.GstMaker {

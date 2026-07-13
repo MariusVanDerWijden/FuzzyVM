@@ -117,6 +117,16 @@ var stackAwareOps = []stackOp{
 type stackAwareGenerator struct{}
 
 func (*stackAwareGenerator) Execute(env Environment) {
+	// The modeled height is only maintained by the stack-aware strategies; any
+	// other strategy that ran in between may have popped the real stack without
+	// updating the model, leaving it overcounting relative to reality. An
+	// overcount is the dangerous direction: ensureStack would then trust items
+	// that aren't there and emit an op that underflows and reverts — the exact
+	// case this model exists to avoid. So distrust a possibly-stale height and
+	// re-establish the operands from scratch. The cost is a few redundant pushes
+	// when the model happened to be accurate; the benefit is that the op never
+	// underflows regardless of what ran before it.
+	*env.stackHeight = 0
 	so := stackAwareOps[int(env.f.Byte())%len(stackAwareOps)]
 	env.ensureStack(so.pop)
 	env.p.Op(so.op)
