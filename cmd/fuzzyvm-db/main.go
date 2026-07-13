@@ -31,7 +31,18 @@ const (
 	// exclusively, so workers can't open their own handle; they talk to the one
 	// writer over this socket instead.
 	sockEnvKey = "FUZZYVM_SOCK"
+	// debugEnvKey, when set to "1", makes the FuzzEVM worker subprocesses log
+	// every generation strategy they select. `generate` propagates the --debug
+	// flag to the workers through it (the workers, not the parent, do the
+	// generating).
+	debugEnvKey = "FUZZYVM_DEBUG"
 )
+
+// debugFlag enables logging of the chosen generation strategies to the console.
+var debugFlag = &cli.BoolFlag{
+	Name:  "debug",
+	Usage: "log the generation strategies chosen for each program to the console",
+}
 
 var dbFlag = &cli.StringFlag{
 	Name:  "db",
@@ -63,6 +74,7 @@ var generateCommand = &cli.Command{
 			Usage: "how long to fuzz for (0 = until interrupted)",
 			Value: 0,
 		},
+		debugFlag,
 	},
 }
 
@@ -170,6 +182,11 @@ func generate(ctx *cli.Context) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", sockEnvKey, sockPath))
+	if ctx.Bool(debugFlag.Name) {
+		// The workers, not this process, do the generating, so pass the flag
+		// down. With multiple parallel workers the strategy logs will interleave.
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=1", debugEnvKey))
+	}
 
 	// Ctrl-C is the normal way to stop an open-ended run. SIGINT reaches both
 	// this process and the `go test` child (same process group); we catch it

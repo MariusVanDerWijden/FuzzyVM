@@ -6,6 +6,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/MariusVanDerWijden/FuzzyVM/generator"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator/precompiles"
 )
 
@@ -24,6 +25,10 @@ func FuzzEVM(f *testing.F) {
 	f.Fuzz(func(t *testing.T, a []byte) {
 		fuzzDBOnce.Do(func() {
 			precompiles.WarmupKZG()
+			// `generate --debug` propagates through this env var.
+			if os.Getenv(debugEnvKey) == "1" {
+				generator.Debug = true
+			}
 			// Connect to the server.
 			if addr := socketAddr(); addr != "" {
 				db, err := dialSocketDB(addr)

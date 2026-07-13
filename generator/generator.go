@@ -20,6 +20,7 @@ package generator
 import (
 	"fmt"
 	"math/big"
+	"os"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
@@ -28,6 +29,11 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/goevmlab/fuzzing"
 )
+
+// Debug, when true, makes generateCode log every strategy it selects (and the
+// resulting bytecode) to stdout, indented by recursion depth. Wired to the
+// --debug flag on the fuzzyvm-db commands.
+var Debug = false
 
 var (
 	fork              = "Osaka"
@@ -71,7 +77,6 @@ func generateCode(f *filler.Filler, recursionLevel int) []byte {
 			labels:         &labels,
 			stackHeight:    &stackHeight,
 		}
-		debug = false
 	)
 
 	// Run for counter rounds
@@ -79,8 +84,12 @@ func generateCode(f *filler.Filler, recursionLevel int) []byte {
 	for range counter {
 		// Select one of the strategies (weighted by Importance).
 		strategy := strategies.Select(f)
-		if debug {
-			fmt.Println(strategy.String())
+		if Debug {
+			// Indent by recursion level so nested (createCall/static/etc.)
+			// generations are visually distinguishable from the top-level program.
+			// Written to stderr so it passes through `go test` (which buffers a
+			// fuzz target's stdout) and reaches the console during `generate`.
+			fmt.Fprintf(os.Stderr, "%*sstrategy: %s\n", recursionLevel*2, "", strategy.String())
 		}
 		// Execute the strategy
 		strategy.Execute(env)
@@ -89,8 +98,8 @@ func generateCode(f *filler.Filler, recursionLevel int) []byte {
 		}
 	}
 	code := env.p.Bytes()
-	if debug {
-		fmt.Printf("length: %v \n%x\n", len(code), code)
+	if Debug {
+		fmt.Fprintf(os.Stderr, "%*sgenerated %d bytes: %x\n", recursionLevel*2, "", len(code), code)
 	}
 	return code
 }
