@@ -57,7 +57,7 @@ func (*staticContextGenerator) Execute(env Environment) {
 	}
 	// Deploy a real child contract whose runtime *begins* with a state-writing
 	// op, then STATICCALL it.
-	child := append(writeOp(env.f), generateCode(filler.NewFiller(env.f.ByteSlice(int(env.f.Uint16()))), env.recursionLevel+1)...)
+	child := append(writeOp(env.f), generateCode(filler.NewFiller(env.f.ByteSlice(int(env.f.Uint16()))), env.recursionLevel+1, env.budget)...)
 	env.CreateAndCall(deployInitCode(child), false, vm.STATICCALL)
 }
 

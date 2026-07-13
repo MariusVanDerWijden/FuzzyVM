@@ -54,10 +54,17 @@ func init() {
 	strategies = newSelector(strats)
 }
 
+// maxTotalBytes caps the total bytecode emitted across a whole generation tree
+// (the top-level program plus every nested sub-generation). It is a budget
+// shared by all recursion levels, not a per-level allowance, so a recursive
+// program can't multiply it by its branching factor and depth.
+const maxTotalBytes = 10000
+
 // GenerateProgram creates a new evm program and returns
 // a gstMaker based on it as well as its program code.
 func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
-	code := generateCode(f, 0)
+	budget := maxTotalBytes
+	code := generateCode(f, 0, &budget)
 	return CreateGstMaker(f, code), code
 }
 
@@ -66,7 +73,20 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 // invocations so the depth is bounded per top-level generation rather than by a
 // process-global counter. Nested generations only need the code, so they call
 // this directly and skip the (throwaway) CreateGstMaker state-test construction.
-func generateCode(f *filler.Filler, recursionLevel int) []byte {
+//
+// budget is the shared byte allowance for the entire tree; it is decremented by
+// what this call emits and passed to any nested generateCode so the sum of all
+// sub-programs stays bounded. A recursive strategy that ignored a shared budget
+// (a per-level cap) could emit maxTotalBytes at each of maxRecursionLevel
+// levels, times its branching factor — effectively unbounded, and slow enough
+// to look like a hang during generation, execution and minimization.
+func generateCode(f *filler.Filler, recursionLevel int, budget *int) []byte {
+	if budget == nil {
+		// Defensive: a direct caller (e.g. a test) may not supply one. Give this
+		// subtree its own budget rather than dereferencing nil.
+		b := maxTotalBytes
+		budget = &b
+	}
 	var (
 		labels      []uint64
 		stackHeight int
@@ -76,12 +96,19 @@ func generateCode(f *filler.Filler, recursionLevel int) []byte {
 			recursionLevel: recursionLevel,
 			labels:         &labels,
 			stackHeight:    &stackHeight,
+			budget:         budget,
 		}
 	)
 
 	// Run for counter rounds
 	counter := f.Byte()
+	prev := 0
 	for range counter {
+		// Stop as soon as the shared budget is exhausted — including by bytes
+		// emitted in nested sub-generations this program spawned.
+		if *budget <= 0 {
+			break
+		}
 		// Select one of the strategies (weighted by Importance).
 		strategy := strategies.Select(f)
 		if Debug {
@@ -91,11 +118,13 @@ func generateCode(f *filler.Filler, recursionLevel int) []byte {
 			// fuzz target's stdout) and reaches the console during `generate`.
 			fmt.Fprintf(os.Stderr, "%*sstrategy: %s\n", recursionLevel*2, "", strategy.String())
 		}
-		// Execute the strategy
+		// Execute the strategy, then charge the shared budget for the bytes it
+		// emitted directly. (Nested generateCode calls have already charged the
+		// budget for their own output, so only count the growth of this program.)
 		strategy.Execute(env)
-		if len(env.p.Bytes()) > 10000 {
-			break
-		}
+		grown := len(env.p.Bytes()) - prev
+		prev = len(env.p.Bytes())
+		*budget -= grown
 	}
 	code := env.p.Bytes()
 	if Debug {

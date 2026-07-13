@@ -52,6 +52,15 @@ type Environment struct {
 	// since undercounting just makes the stack-aware generator push a few
 	// redundant operands rather than emit an op that underflows.
 	stackHeight *int
+	// budget is the number of bytes still allowed across the *entire* generation
+	// tree — the top-level program plus every nested sub-generation
+	// (createCall/static/selfdestruct/…). It is a pointer shared down through all
+	// recursion levels, so a program that recurses can't multiply the size limit
+	// by its branching factor and depth. Without a shared budget, each level had
+	// its own 10k allowance, so a modestly branching recursion up to
+	// maxRecursionLevel could emit megabytes of code and take near-forever to
+	// generate, execute and minimize.
+	budget *int
 }
 
 // addLabel emits a JUMPDEST and records its PC as a reusable jump target.
@@ -140,6 +149,20 @@ func (s *selector) Select(f *filler.Filler) Strategy {
 // CreateAndCall runs initCode as constructor code (CREATE/CREATE2) and then
 // calls the resulting account with callOp.
 func (env Environment) CreateAndCall(initCode []byte, isCreate2 bool, callOp vm.OpCode) {
+	// Embedding code via Mstore expands it ~3.4x (a PUSH32+PUSH+MSTORE per 32-byte
+	// word), and this is the single choke point every create/call strategy funnels
+	// through. Cap the embedded code to what the shared budget can still afford so
+	// one strategy can't emit hundreds of KB in a single call (which recursion
+	// would then multiply). Truncating init code is harmless for fuzzing — it just
+	// yields a different (often failing) deployment.
+	if env.budget != nil {
+		if maxCode := *env.budget / 4; len(initCode) > maxCode {
+			if maxCode < 0 {
+				maxCode = 0
+			}
+			initCode = initCode[:maxCode]
+		}
+	}
 	var (
 		value    = 0
 		offset   = 0

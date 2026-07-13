@@ -64,7 +64,7 @@ func (*createCallGenerator) Execute(env Environment) {
 		seedLen   = env.f.Uint16()
 		seed      = env.f.ByteSlice(int(seedLen))
 		newFiller = filler.NewFiller(seed)
-		code      = generateCode(newFiller, env.recursionLevel+1)
+		code      = generateCode(newFiller, env.recursionLevel+1, env.budget)
 		isCreate2 = env.f.Bool()
 		callOp    = vm.OpCode(env.f.Byte())
 	)
