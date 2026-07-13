@@ -137,16 +137,18 @@ func (s *selector) Select(f *filler.Filler) Strategy {
 	return s.strats[i]
 }
 
-func (env Environment) CreateAndCall(code []byte, isCreate2 bool, callOp vm.OpCode) {
+// CreateAndCall runs initCode as constructor code (CREATE/CREATE2) and then
+// calls the resulting account with callOp.
+func (env Environment) CreateAndCall(initCode []byte, isCreate2 bool, callOp vm.OpCode) {
 	var (
 		value    = 0
 		offset   = 0
-		size     = len(code)
+		size     = len(initCode)
 		salt     = 0
 		createOp = vm.CREATE
 	)
 	// Load the code into mem
-	env.p.Mstore(code, 0)
+	env.p.Mstore(initCode, 0)
 	// Create it
 	if isCreate2 {
 		env.p.Push(salt)

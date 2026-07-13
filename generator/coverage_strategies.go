@@ -55,11 +55,10 @@ func (*staticContextGenerator) Execute(env Environment) {
 	if env.recursionLevel >= maxRecursionLevel {
 		return
 	}
-	// A child one level deeper contains state-changing ops; invoking it
-	// STATICCALL makes it read-only, so those ops revert with ErrWriteProtection.
-	seed := env.f.ByteSlice(int(env.f.Uint16()))
-	code := generateCode(filler.NewFiller(seed), env.recursionLevel+1)
-	env.CreateAndCall(code, false, vm.STATICCALL)
+	// Deploy a real child contract whose runtime *begins* with a state-writing
+	// op, then STATICCALL it.
+	child := append(writeOp(env.f), generateCode(filler.NewFiller(env.f.ByteSlice(int(env.f.Uint16()))), env.recursionLevel+1)...)
+	env.CreateAndCall(deployInitCode(child), false, vm.STATICCALL)
 }
 
 func (*staticContextGenerator) Importance() int { return 3 }
@@ -136,9 +135,10 @@ func (*deepCallGenerator) String() string  { return "deepCallGenerator" }
 type returnDataCopyGenerator struct{}
 
 func (*returnDataCopyGenerator) Execute(env Environment) {
-	// Child returns 32 bytes of memory.
-	child := program.New().Return(0, 32)
-	env.CreateAndCall(child.Bytes(), false, vm.STATICCALL) // sets returnData
+	// Deploy a child whose *runtime* returns 32 bytes, then STATICCALL it so the
+	// 32 bytes land in the returndata buffer.
+	childRuntime := program.New().Return(0, 32).Bytes()
+	env.CreateAndCall(deployInitCode(childRuntime), false, vm.STATICCALL) // sets 32-byte returnData
 	// RETURNDATACOPY pops destOffset, dataOffset, length (top-first). A length
 	// > 32 overruns the buffer -> ErrReturnDataOutOfBounds.
 	length := int(env.f.Byte()) // 0..255, sometimes > 32

@@ -59,7 +59,7 @@ func (*createCallGenerator) Execute(env Environment) {
 	if env.recursionLevel >= maxRecursionLevel {
 		return
 	}
-	// Create and call a meaningful program, generated one level deeper.
+	// Deploy and call a meaningful program, generated one level deeper.
 	var (
 		seedLen   = env.f.Uint16()
 		seed      = env.f.ByteSlice(int(seedLen))
@@ -68,7 +68,7 @@ func (*createCallGenerator) Execute(env Environment) {
 		isCreate2 = env.f.Bool()
 		callOp    = vm.OpCode(env.f.Byte())
 	)
-	env.CreateAndCall(code, isCreate2, callOp)
+	env.DeployAndCall(code, isCreate2, callOp)
 }
 
 func (*createCallGenerator) Importance() int {
