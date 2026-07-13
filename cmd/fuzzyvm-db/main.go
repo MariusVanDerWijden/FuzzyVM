@@ -73,6 +73,7 @@ func main() {
 	app.Commands = []*cli.Command{
 		inspectCommand,
 		generateCommand,
+		replayCommand,
 	}
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
