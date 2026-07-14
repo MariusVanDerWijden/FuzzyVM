@@ -35,21 +35,26 @@ func (*ecdsaCaller) call(p *program.Program, f *filler.Filler) error {
 	if err != nil {
 		return err
 	}
-	sig, err := crypto.Sign(f.ByteSlice(32), sk)
+	hash := f.ByteSlice(32)
+	sig, err := crypto.Sign(hash, sk)
 	if err != nil {
 		return err
 	}
-	// Sig is in [R | S | V] we need it in components
+	input := make([]byte, 128)
+	copy(input[0:32], hash)         // signed message hash
+	input[63] = sig[64] + 27        // v
+	copy(input[64:96], sig[0:32])   // r
+	copy(input[96:128], sig[32:64]) // s
 	c := CallObj{
 		Gas:       uint256.MustFromBig(f.GasInt()),
 		Address:   ecdsaAddr,
 		InOffset:  0,
-		InSize:    uint32(len(sig)),
+		InSize:    uint32(len(input)),
 		OutOffset: 0,
-		OutSize:   20,
+		OutSize:   32,
 		Value:     f.BigInt32(),
 	}
-	p.Mstore(sig, 0)
+	p.Mstore(input, 0)
 	CallRandomizer(p, f, c)
 	return nil
 }

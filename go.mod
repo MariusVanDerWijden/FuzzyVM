@@ -5,7 +5,7 @@ go 1.25.7
 require (
 	github.com/cockroachdb/pebble v1.1.5
 	github.com/consensys/gnark-crypto v0.18.1
-	github.com/ethereum/go-ethereum v1.17.4
+	github.com/ethereum/go-ethereum v1.17.5-0.20260713133110-68f711b9defc
 	github.com/holiman/goevmlab v0.0.0-20260713080705-95c2ff884c51
 	github.com/holiman/uint256 v1.3.2
 	github.com/korovkin/limiter v0.0.0-20230307205149-3d4b2b34c99d

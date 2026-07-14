@@ -107,8 +107,13 @@ func (*randomCallGenerator) Execute(env Environment) {
 		addr = common.BytesToAddress(env.f.ByteSlice(20))
 	}
 
+	// Do some gas > u64 every know and then.
+	gas := uint256.MustFromBig(env.f.GasInt())
+	if env.f.Byte() < 8 { // ~1/32
+		gas = new(uint256.Int).Lsh(uint256.NewInt(1), 64+uint(env.f.Byte())%192)
+	}
 	c := precompiles.CallObj{
-		Gas:       uint256.MustFromBig(env.f.GasInt()),
+		Gas:       gas,
 		Address:   addr,
 		Value:     env.f.BigInt16(),
 		InOffset:  uint32(env.f.MemInt().Uint64()),

@@ -36,7 +36,7 @@ import (
 var Debug = false
 
 var (
-	fork              = "Osaka"
+	fork              = "Amsterdam"
 	sender            = common.HexToAddress("a94f5374fce5edbc8e2a8697c15331677e6ebf0b")
 	sk                = hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8")
 	maxRecursionLevel = 10
@@ -68,18 +68,7 @@ func GenerateProgram(f *filler.Filler) (*fuzzing.GstMaker, []byte) {
 	return CreateGstMaker(f, code), code
 }
 
-// generateCode is the recursive core of GenerateProgram: it builds just the
-// bytecode. recursionLevel is carried down through nested createCallGenerator
-// invocations so the depth is bounded per top-level generation rather than by a
-// process-global counter. Nested generations only need the code, so they call
-// this directly and skip the (throwaway) CreateGstMaker state-test construction.
-//
-// budget is the shared byte allowance for the entire tree; it is decremented by
-// what this call emits and passed to any nested generateCode so the sum of all
-// sub-programs stays bounded. A recursive strategy that ignored a shared budget
-// (a per-level cap) could emit maxTotalBytes at each of maxRecursionLevel
-// levels, times its branching factor — effectively unbounded, and slow enough
-// to look like a hang during generation, execution and minimization.
+// generateCode builds the bytecode recursively, limited by a byte length budget.
 func generateCode(f *filler.Filler, recursionLevel int, budget *int) []byte {
 	if budget == nil {
 		// Defensive: a direct caller (e.g. a test) may not supply one. Give this
@@ -112,15 +101,9 @@ func generateCode(f *filler.Filler, recursionLevel int, budget *int) []byte {
 		// Select one of the strategies (weighted by Importance).
 		strategy := strategies.Select(f)
 		if Debug {
-			// Indent by recursion level so nested (createCall/static/etc.)
-			// generations are visually distinguishable from the top-level program.
-			// Written to stderr so it passes through `go test` (which buffers a
-			// fuzz target's stdout) and reaches the console during `generate`.
 			fmt.Fprintf(os.Stderr, "%*sstrategy: %s\n", recursionLevel*2, "", strategy.String())
 		}
-		// Execute the strategy, then charge the shared budget for the bytes it
-		// emitted directly. (Nested generateCode calls have already charged the
-		// budget for their own output, so only count the growth of this program.)
+		// Execute the strategy.
 		strategy.Execute(env)
 		grown := len(env.p.Bytes()) - prev
 		prev = len(env.p.Bytes())
@@ -167,19 +150,10 @@ func CreateGstMaker(fill *filler.Filler, code []byte) *fuzzing.GstMaker {
 	return gst
 }
 
-// defaultGasLimit is the standard limit: as high as allowed so programs almost
-// never run out of gas. Capped at the EIP-7825 per-transaction gas limit
-// (params.MaxTxGas), which the Osaka fork enforces — exceeding it makes the
-// state test unexecutable.
+// defaultGasLimit is the standard limit, capped at 16M.
 const defaultGasLimit = uint64(params.MaxTxGas)
 
-// gasLimit picks the transaction gas limit. Most of the time it returns the
-// generous default so programs run to completion, but a fraction of the time it
-// returns a smaller limit so execution runs out of gas partway through. Gas
-// accounting (memory-expansion cost, the CALL 63/64 rule, EIP-2929/3529
-// warm/cold access and refunds, precompile gas formulas) is one of the most
-// divergence-prone areas across clients, and it is only exercised when OOG
-// actually lands mid-execution across the whole opcode range.
+// gasLimit picks the transaction gas limit.
 func gasLimit(f *filler.Filler) uint64 {
 	switch b := f.Byte(); {
 	case b < 200:

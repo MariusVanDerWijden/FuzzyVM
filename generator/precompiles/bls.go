@@ -19,9 +19,9 @@ package precompiles
 import (
 	"math/big"
 
+	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fp"
-	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm/program"
 	"github.com/holiman/uint256"
@@ -126,7 +126,40 @@ func (*blsPairingCaller) call(p *program.Program, f *filler.Filler) error {
 	return nil
 }
 
-// --- helpers ---
+// Points that are on the curve but NOT in the prime-order subgroup.
+var (
+	blsG1NotInSubgroup = common.Hex2Bytes("000000000000000000000000000000000123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef00000000000000000000000000000000193fb7cedb32b2c3adc06ec11a96bc0d661869316f5e4a577a9f7c179593987beb4fb2ee424dbb2f5dd891e228b46c4a")
+	blsG2NotInSubgroup = common.Hex2Bytes("00000000000000000000000000000000197bfd0342bbc8bee2beced2f173e1a87be576379b343e93232d6cef98d84b1d696e5612ff283ce2cfdccb2cfb65fa0c00000000000000000000000000000000184e811f55e6f9d84d77d2f79102fd7ea7422f4759df5bf7f6331d550245e3f1bcf6a30e3b29110d85e0ca16f9f6ae7a000000000000000000000000000000000f10e1eb3c1e53d2ad9cf2d398b2dc22c5842fab0a74b174f691a7e914975da3564d835cd7d2982815b8ac57f507348f000000000000000000000000000000000767d1c453890f1b9110fda82f5815c27281aba3f026ee868e4176a0654feea41a96575e0c4d58a14dbfbcc05b5010b1")
+)
+
+// blsSubgroupCaller feeds an on-curve-but-not-in-subgroup point into a BLS
+// precompile that applies subgroup checks (G1-MSM, G2-MSM, pairing), hitting the
+// otherwise-dark rejection paths. Each invocation targets one of the four
+// rejection sites; the pairing G2 case uses a valid G1 so the G1 check passes
+// first and the G2 check is actually reached.
+type blsSubgroupCaller struct{}
+
+func (*blsSubgroupCaller) call(p *program.Program, f *filler.Filler) error {
+	switch f.Byte() % 4 {
+	case 0: // G1-MSM, bad G1 -> errBLS12381G1PointSubgroup
+		p.Mstore(blsG1NotInSubgroup, 0)
+		p.Mstore(scalar32(f), blsG1Size)
+		callBLS(p, f, blsG1MSMAddr, blsG1MSMItem, blsG1Size)
+	case 1: // G2-MSM, bad G2 -> errBLS12381G2PointSubgroup
+		p.Mstore(blsG2NotInSubgroup, 0)
+		p.Mstore(scalar32(f), blsG2Size)
+		callBLS(p, f, blsG2MSMAddr, blsG2MSMItem, blsG2Size)
+	case 2: // pairing, bad G1 (valid G2) -> G1 subgroup rejection
+		p.Mstore(blsG1NotInSubgroup, 0)
+		p.Mstore(encodeBLSG2(randG2(f)), blsG1Size)
+		callBLS(p, f, blsPairingAddr, blsPairItem, 32)
+	default: // pairing, valid G1 + bad G2 -> G2 subgroup rejection
+		p.Mstore(encodeBLSG1(randG1(f)), 0)
+		p.Mstore(blsG2NotInSubgroup, blsG1Size)
+		callBLS(p, f, blsPairingAddr, blsPairItem, 32)
+	}
+	return nil
+}
 
 // blsRounds picks how many (expensive) elliptic-curve rounds an MSM/pairing
 // builder does. Each round is a full ScalarMultiplication, the dominant cost in
