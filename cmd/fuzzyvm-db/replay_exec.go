@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
@@ -23,18 +24,35 @@ import (
 // reaching those needs a separate constrained-gas pass.
 var replaySeed = make([]byte, 128)
 
+// replayTimeout bounds a single code's execution. Replay runs without go test's
+// per-input watchdog, so a pathological program (e.g. a heavy precompile at max
+// gas) could stall a worker and, with enough of them, the whole coverage run. 60s
+// is far above any healthy code; one that exceeds it is skipped, not hung on.
+const replayTimeout = 60 * time.Second
+
 // replayCode replays one stored bytecode through the same state-test path the
 // fuzzer uses (generator.CreateGstMaker -> tests.StateTest -> RunNoVerify), so
 // the coverage it produces reflects the exact EVM surface FuzzyVM exercises. It
-// recovers from panics so one pathological program can't abort a whole replay.
-func replayCode(code []byte) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic replaying code: %v", r)
-		}
+// runs the execution in a goroutine under replayTimeout and recovers from panics
+// there, so neither a slow program nor a pathological one can abort or stall the
+// replay.
+func replayCode(code []byte) error {
+	done := make(chan error, 1) // buffered: a timed-out goroutine can still send and exit
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				done <- fmt.Errorf("panic replaying code: %v", r)
+			}
+		}()
+		gst := generator.CreateGstMaker(filler.NewFiller(replaySeed), code)
+		done <- executeState(gst)
 	}()
-	gst := generator.CreateGstMaker(filler.NewFiller(replaySeed), code)
-	return executeState(gst)
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(replayTimeout):
+		return fmt.Errorf("replay exceeded %s", replayTimeout)
+	}
 }
 
 // executeState mirrors fuzzer.MinimizeProgram's run path: marshal the GstMaker's

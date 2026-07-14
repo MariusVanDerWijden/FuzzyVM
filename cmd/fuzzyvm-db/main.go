@@ -129,7 +129,12 @@ func inspect(ctx *cli.Context) error {
 func generate(ctx *cli.Context) error {
 	procs := ctx.Int("procs")
 	if procs <= 0 {
-		procs = runtime.NumCPU()
+		// Default to NumCPU-2. Leaving a couple of cores free measurably lowers the
+		// rate of go test's 10s-watchdog crashes — CPU oversubscription is what
+		// pushes a minimize step over the deadline — with no loss in throughput.
+		if procs = runtime.NumCPU() - 2; procs < 1 {
+			procs = 1
+		}
 	}
 	dbPath, err := filepath.Abs(ctx.String(dbFlag.Name))
 	if err != nil {

@@ -24,12 +24,10 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/eth/tracers/logger"
 	"github.com/ethereum/go-ethereum/tests"
 	"github.com/holiman/goevmlab/fuzzing"
 	"golang.org/x/crypto/sha3"
@@ -176,20 +174,10 @@ func MinimizeProgram(test *fuzzing.GstMaker) (*fuzzing.GstMaker, []byte, error) 
 			addr = ad
 		}
 	}
-	orgs := original.buf.Bytes()
-	idx := strings.LastIndex(string(orgs), "{")
-	if idx <= 0 {
-		idx = 0
-	} else {
-		idx -= 1
-	}
-	orgs = orgs[0:idx]
-	foundLength := sort.Search(len(code), func(i int) bool {
-		// Set the code
+	traceHash := func(n int) (sum uint64, ok bool) {
 		acc := gst[name].Pre[addr]
-		acc.Code = code[0:i]
+		acc.Code = code[0:n]
 		gst[name].Pre[addr] = acc
-		// Run and see if the trace still matches
 		var gethStateTest tests.StateTest
 		data, err := json.Marshal(gst[name])
 		if err != nil {
@@ -198,27 +186,17 @@ func MinimizeProgram(test *fuzzing.GstMaker) (*fuzzing.GstMaker, []byte, error) 
 		if err := json.Unmarshal(data, &gethStateTest); err != nil {
 			panic(err)
 		}
-		newOutput := new(cappedBuffer)
-		cfg := vm.Config{}
-		cfg.Tracer = logger.NewJSONLogger(&logger.Config{Limit: maxTraceSize}, newOutput)
-		subtest := gethStateTest.Subtests()[0]
-		gethStateTest.RunNoVerify(subtest, cfg, false, rawdb.HashScheme)
-		if newOutput.overflow {
-			// The prefix traces longer than the whole original program, so it
-			// cannot match.
-			return false
-		}
-		newB := newOutput.buf.Bytes()
-		newIdx := strings.LastIndex(string(newB), "{")
-		if newIdx <= 0 {
-			newIdx = 0
-		} else {
-			newIdx -= 1
-		}
-		newB = newB[0:newIdx]
-		//fmt.Printf("%v: %v %v\n", i, len(newB), len(orgs))
-		//fmt.Printf(string(newB))
-		return bytes.Equal(newB, orgs)
+		tr := newHashTracer()
+		state, _, _, _ := gethStateTest.RunNoVerify(gethStateTest.Subtests()[0], vm.Config{Tracer: tr.hooks()}, false, rawdb.HashScheme)
+		// Close the state db RunNoVerify returns, or its trie db (and any snapshot
+		// goroutine) leaks across every probe. Close is nil-safe.
+		state.Close()
+		return tr.sum, !tr.overflow
+	}
+	orgHash, _ := traceHash(len(code))
+	foundLength := sort.Search(len(code), func(i int) bool {
+		sum, ok := traceHash(i)
+		return ok && sum == orgHash
 	})
 	if foundLength+100 < len(code) {
 		// Add some bytes to make it easier to proof differences in execution
