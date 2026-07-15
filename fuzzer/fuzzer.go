@@ -136,6 +136,7 @@ func setupTrace(name string) *os.File {
 const (
 	maxTraceSize    = 32 * 1024 * 1024
 	traceSizeMargin = 1024
+	minMinimizeSize = 256
 )
 
 var ErrTraceTooLarge = errors.New("trace too large to minimize")
@@ -173,6 +174,10 @@ func MinimizeProgram(test *fuzzing.GstMaker) (*fuzzing.GstMaker, []byte, error) 
 			code = acc.Code
 			addr = ad
 		}
+	}
+	// Programs this short aren't worth the re-executions.
+	if len(code) < minMinimizeSize {
+		return test, code, nil
 	}
 	traceHash := func(n int) (sum uint64, ok bool) {
 		acc := gst[name].Pre[addr]
