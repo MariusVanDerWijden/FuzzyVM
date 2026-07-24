@@ -35,13 +35,17 @@ func (*bn256PairingCaller) call(p *program.Program, f *filler.Filler) error {
 	var (
 		rounds                   = f.Byte()
 		curvePoints, twistPoints = pairing(int(rounds), f)
-		inSize                   = uint32(len(curvePoints) * 192)
 		offset                   = uint32(0)
 	)
 	// bloat the pairing with probability 1/2
 	if f.Bool() {
 		curvePoints, twistPoints = bloatPairing(curvePoints, twistPoints, f)
 	}
+	// InSize must be computed *after* bloating: bloatPairing appends extra
+	// point pairs, and sizing the input from the pre-bloat slice meant the
+	// precompile only ever saw the original prefix — so the appended pairs (and
+	// the infinity-point handling bloatPairing exists to test) were dead code.
+	inSize := uint32(len(curvePoints) * 192)
 
 	c := CallObj{
 		Gas:       uint256.MustFromBig(f.GasInt()),

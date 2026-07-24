@@ -216,21 +216,53 @@ func (*invalidJumpGenerator) Execute(env Environment) {
 func (*invalidJumpGenerator) Importance() int { return 1 }
 func (*invalidJumpGenerator) String() string  { return "invalidJumpGenerator" }
 
-// P10. Stack-limit boundary. Approach the 1024-item stack limit so a DUP trips
-// stack overflow. It intentionally leaves the stack deep, so it resets the
-// modeled height to keep later stack-aware ops honest — and is best emitted
-// late (its high per-op count and low importance make that likely).
+// P10. Stack-limit boundary. Grows the stack toward the 1024-item limit so a DUP
+// either just fits or trips ErrStackOverflow.
+//
+// The depth is drawn to straddle the limit (some runs stay just under, some go
+// just over) rather than always landing in the same place. Afterwards the stack
+// is popped back down: leaving ~1000 items on it made *every* later strategy in
+// the same program overflow as soon as it pushed a couple of operands, silently
+// truncating the rest of the program. Popping costs one byte per item but keeps
+// the remainder of the program alive.
 type stackFillGenerator struct{}
 
 func (*stackFillGenerator) Execute(env Environment) {
+	// Mostly fill to just under the 1024 limit, so the DUPs all succeed and the
+	// POPs below can restore the stack for the rest of the program. ~1/8 of the
+	// time overshoot instead, which trips ErrStackOverflow and ends the frame —
+	// that is the point of the strategy, but it must stay the minority case or it
+	// would truncate most programs that contain it.
+	overflow := env.f.Byte() < 32
+	depth := 1000 + int(env.f.Byte())%22 // 1000..1021, safely under 1024
+	if overflow {
+		depth = 1024 + int(env.f.Byte())%16 // 1024..1039, over the limit
+	}
+	// A DUP1 and its matching POP are one byte each; keep the pair inside the
+	// shared byte budget instead of spending it all in one strategy.
+	if env.budget != nil {
+		if maxDepth := (*env.budget - 8) / 2; depth > maxDepth {
+			depth = maxDepth
+		}
+	}
+	if depth <= 0 {
+		return
+	}
 	env.p.Push0()
-	for i := 0; i < 1000+int(env.f.Byte())%40; i++ { // approach/exceed 1024
+	for range depth {
 		env.p.Op(vm.DUP1)
 	}
-	// The real stack is now very deep; the model can't track that usefully, so
-	// clamp it back to zero rather than leave a huge count that would make
-	// ensureStack a no-op forever.
-	*env.stackHeight = 0
+	if overflow {
+		// The frame aborted on the overflowing DUP; emitting POPs would be dead
+		// bytes. Leave the modeled height alone — nothing after this executes.
+		return
+	}
+	// Drain the stack so later strategies still have room to run.
+	for range depth {
+		env.p.Op(vm.POP)
+	}
+	// Net effect of the surviving path: the single Push0 that remains.
+	*env.stackHeight = 1
 }
 
 func (*stackFillGenerator) Importance() int { return 1 }

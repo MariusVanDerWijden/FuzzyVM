@@ -31,6 +31,24 @@ var callStrategies = []Strategy{
 	new(callPrecompileGenerator),
 }
 
+// callOps are the opcodes that actually consume the call frame CreateAndCall
+// builds. Drawing the op from a raw filler byte instead (the previous behaviour)
+// hit one of these only 4/256 = 1.5% of the time: the other 98.5% emitted an
+// unrelated — often undefined — opcode, so the whole create-and-call setup (and,
+// for createCallGenerator, a full recursive sub-generation) was wasted.
+var callOps = []vm.OpCode{vm.CALL, vm.CALLCODE, vm.DELEGATECALL, vm.STATICCALL}
+
+// randomCallOp picks the opcode used to invoke a freshly created contract.
+// Usually a real call op so the call actually happens; occasionally (~1/32) a
+// raw random byte, which keeps a little coverage of "operands pushed, then
+// something else executes" without wasting nearly every invocation on it.
+func randomCallOp(env Environment) vm.OpCode {
+	if env.f.Byte() < 8 {
+		return vm.OpCode(env.f.Byte())
+	}
+	return callOps[int(env.f.Byte())%len(callOps)]
+}
+
 type createCallRNGGenerator struct{}
 
 func (*createCallRNGGenerator) Execute(env Environment) {
@@ -38,7 +56,7 @@ func (*createCallRNGGenerator) Execute(env Environment) {
 	var (
 		code      = env.f.ByteSlice256()
 		isCreate2 = env.f.Bool()
-		callOp    = vm.OpCode(env.f.Byte())
+		callOp    = randomCallOp(env)
 	)
 	env.CreateAndCall(code, isCreate2, callOp)
 }
@@ -66,7 +84,7 @@ func (*createCallGenerator) Execute(env Environment) {
 		newFiller = filler.NewFiller(seed)
 		code      = generateCode(newFiller, env.recursionLevel+1, env.budget)
 		isCreate2 = env.f.Bool()
-		callOp    = vm.OpCode(env.f.Byte())
+		callOp    = randomCallOp(env)
 	)
 	env.DeployAndCall(code, isCreate2, callOp)
 }

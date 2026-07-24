@@ -3,11 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/MariusVanDerWijden/FuzzyVM/generator"
 	"github.com/cockroachdb/pebble"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/tests"
@@ -44,8 +46,23 @@ func replayCode(code []byte) error {
 				done <- fmt.Errorf("panic replaying code: %v", r)
 			}
 		}()
+		// Replay twice: once with the fuzzer's own (empty-storage) pre-state, and
+		// once with committed non-zero storage. The generator can only ever build
+		// two accounts with empty storage, which makes the whole `original != 0`
+		// half of the EIP-2200/3529 SSTORE gas-and-refund state machine
+		// structurally unreachable — the single most bug-prone gas logic in the
+		// EVM. Seeding storage here reaches it without changing what the fuzzer
+		// stores. The first error wins; a failure in one variant shouldn't hide
+		// the other.
 		gst := generator.CreateGstMaker(filler.NewFiller(replaySeed), code)
-		done <- executeState(gst)
+		err := executeState(gst)
+
+		warm := generator.CreateGstMaker(filler.NewFiller(replaySeed), code)
+		seedPreState(warm)
+		if werr := executeState(warm); err == nil {
+			err = werr
+		}
+		done <- err
 	}()
 	select {
 	case err := <-done:
@@ -53,6 +70,57 @@ func replayCode(code []byte) error {
 	case <-time.After(replayTimeout):
 		return fmt.Errorf("replay exceeded %s", replayTimeout)
 	}
+}
+
+// prestateSlots is the committed storage written to the destination account
+// before replaying with a non-empty pre-state.
+//
+// The slots are clustered in the low range because that is where the generator's
+// SSTORE/SLOAD strategies write (they draw slots from filler.MemInt, which is
+// heavily biased to 0..255), so a generated program is likely to actually touch
+// one of them. The values cover the cases the refund machine branches on:
+// a small value, an all-ones word, and the sign bit.
+var prestateSlots = map[uint64][]byte{
+	0x00: {0x01},
+	0x01: {0xff},
+	0x02: {0x42},
+	0x10: {0xde, 0xad, 0xbe, 0xef},
+	0x20: {0x80, 0x00, 0x00, 0x00},
+	0xff: {0x01},
+}
+
+// seedPreState gives the destination account committed, non-zero storage (and a
+// non-zero balance and nonce) so a replay reaches state the generator cannot
+// produce: the SSTORE original!=0 refund branches, SLOAD of a warm non-zero
+// slot, a non-zero SELFBALANCE, and the "account exists with nonce" distinctions
+// that EXTCODEHASH and CREATE address derivation depend on.
+func seedPreState(gst *fuzzing.GstMaker) {
+	dest := gst.GetDestination()
+	storage := make(map[common.Hash]common.Hash, len(prestateSlots))
+	for slot, val := range prestateSlots {
+		storage[common.BigToHash(new(big.Int).SetUint64(slot))] = common.BytesToHash(val)
+	}
+	// AddAccount overwrites by address, so this replaces the destination the
+	// generator added — keeping its code, which is the program under replay.
+	gst.AddAccount(dest, fuzzing.GenesisAccount{
+		Code:    codeOf(gst, dest),
+		Storage: storage,
+		Balance: big.NewInt(0x1bc16d674ec80000), // 2 ETH, so SELFBALANCE is non-zero
+		Nonce:   7,
+	})
+}
+
+// codeOf digs the code currently assigned to addr out of the state test, so
+// seedPreState can rewrite the account without losing the program under replay.
+func codeOf(gst *fuzzing.GstMaker, addr common.Address) []byte {
+	name := ""
+	gstPtr := gst.ToGeneralStateTest(name)
+	if sub, ok := (*gstPtr)[name]; ok {
+		if acc, ok := sub.Pre[addr]; ok {
+			return acc.Code
+		}
+	}
+	return nil
 }
 
 // executeState mirrors fuzzer.MinimizeProgram's run path: marshal the GstMaker's
