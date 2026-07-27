@@ -17,8 +17,12 @@
 package precompiles
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	_ "crypto/sha256" // registers SHA-256 for the RFC 6979 nonce derivation
+	"encoding/asn1"
+	"math/big"
 
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
@@ -64,12 +68,9 @@ func (*p256Caller) call(p *program.Program, f *filler.Filler) error {
 // hash(32) || r(32) || s(32) || pubX(32) || pubY(32), each big-endian and
 // left-padded to 32 bytes.
 func validP256Input(f *filler.Filler) ([]byte, error) {
-	sk, err := ecdsa.GenerateKey(elliptic.P256(), f)
-	if err != nil {
-		return nil, err
-	}
+	sk := fillerKey(f, elliptic.P256())
 	hash := f.ByteSlice(32)
-	r, s, err := ecdsa.Sign(f, sk, hash)
+	r, s, err := signP256(sk, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +84,28 @@ func validP256Input(f *filler.Filler) ([]byte, error) {
 	copy(input[96:128], leftPad32(sk.X.Bytes()))
 	copy(input[128:160], leftPad32(sk.Y.Bytes()))
 	return input, nil
+}
+
+// signP256 signs hash with sk, deterministically per RFC 6979.
+//
+// ecdsa.Sign cannot be given the filler, for the reason spelled out in
+// fillerKey. Handing it a private deterministic reader would not help either:
+// MaybeReadByte would still shift that stream by a byte or not, changing the
+// nonce and with it r and s, so the generated program would still differ
+// between runs from the same seed. RFC 6979 removes the randomness entirely.
+func signP256(sk *ecdsa.PrivateKey, hash []byte) (r, s *big.Int, err error) {
+	// A nil reader selects deterministic signing. opts must name the hash that
+	// produced the digest; ours is 32 bytes of filler, which SHA-256 matches in
+	// width, and the nonce derivation cares about nothing else.
+	der, err := sk.Sign(nil, hash, crypto.SHA256)
+	if err != nil {
+		return nil, nil, err
+	}
+	var sig struct{ R, S *big.Int }
+	if _, err := asn1.Unmarshal(der, &sig); err != nil {
+		return nil, nil, err
+	}
+	return sig.R, sig.S, nil
 }
 
 // leftPad32 left-pads b to 32 bytes (big-endian), matching the precompile's

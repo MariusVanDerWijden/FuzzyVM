@@ -17,8 +17,6 @@
 package precompiles
 
 import (
-	"crypto/ecdsa"
-
 	"github.com/MariusVanDerWijden/FuzzyVM/filler"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm/program"
@@ -31,10 +29,9 @@ var ecdsaAddr = common.HexToAddress("0x1")
 type ecdsaCaller struct{}
 
 func (*ecdsaCaller) call(p *program.Program, f *filler.Filler) error {
-	sk, err := ecdsa.GenerateKey(crypto.S256(), f)
-	if err != nil {
-		return err
-	}
+	// crypto.Sign is deterministic (RFC 6979 nonces), so deriving the key from
+	// the filler is all this needs to be reproducible.
+	sk := fillerKey(f, crypto.S256())
 	hash := f.ByteSlice(32)
 	sig, err := crypto.Sign(hash, sk)
 	if err != nil {
